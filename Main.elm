@@ -9,6 +9,33 @@ import Keyboard
 import VirtualDom
 import Json.Decode exposing ((:=), int, string)
 import Json.Encode exposing (..)
+import String exposing (length)
+
+myFontSize = 20
+myFontFamily = "Courier"
+innerPadding =
+    { left = 20
+    , bottom = 40
+    , right = 80
+    , top = 160 }
+
+outerPadding =
+    { left = 40
+    , bottom = 30
+    , right = 20
+    , top = 10 }
+
+type alias InnerPadding = 
+    { left : Int
+    , bottom : Int
+    , right : Int
+    , top : Int }
+
+type alias OuterPadding = 
+    { left : Int
+    , bottom : Int
+    , right : Int
+    , top : Int }
 
 main =
   Html.program
@@ -70,7 +97,8 @@ type alias Id = Int
 type Msg =
       MouseMsg Mouse.Position
     | KeyMsg Keyboard.KeyCode
-    | Select Id
+    | Inner Id
+    | Outer Id
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -78,7 +106,8 @@ update msg model =
   case msg of
     MouseMsg position -> {model | debugMsg = ("mouseMsg" ++ (toString position))} ! []
     KeyMsg code -> {model | debugMsg = "keyMsg"} ! []
-    Select id -> {model | debugMsg = "Selected " ++ (toString id)} ! []
+    Inner id -> {model | debugMsg = "Inner " ++ (toString id)} ! []
+    Outer id -> {model | debugMsg = "Outer " ++ (toString id)} ! []
 
 
 
@@ -87,7 +116,7 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
---    Sub.batch [ Keyboard.presses KeyMsg]
+   -- Sub.batch [ Keyboard.presses KeyMsg]
     Sub.batch [ Mouse.downs MouseMsg]
 
 
@@ -98,10 +127,10 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
     Debug.log model.debugMsg
-    svg [ viewBox "0 0 500 500", width "800px" ]
-      [  fcShapeToSvg (Start {id=0,x=30,y=50,text="",title=""}),
+    svg [ viewBox "0 0 500 500", width "500"]
+      [  fcShapeToSvg (Start {id=0,x=0,y=0,text="",title="Start"}),
          fcShapeToSvg (Output {id=2,x=170, y=170, text="ABC", title="abc"})
-      , line [ onMouseDown (Select 3), x1 "50", y1 "50", x2 "69", y2 "90", stroke "#023963" ] []
+      , line [ onMouseDown (Inner 3), x1 "50", y1 "50", x2 "69", y2 "90", stroke "#023963" ] []
       ]
 
 
@@ -109,16 +138,45 @@ fcShapeToSvg : FcShape -> Svg.Svg Msg
 fcShapeToSvg fcShape = 
     case fcShape of
         Start v ->
-            g [][
-                rect [ onMouseDown (Select 31), x (toString <| v.x - 30), y (toString <| v.y - 30), width "190", height "110",  rx "15", ry "10", fill "#FFF9CE" ] [],
-                rect [ onMouseDown (Select 32), x (toString v.x), y (toString v.y), width "60", height "80",  rx "15", ry "10", fill "#0B79CE" ] [],
-            text' [ Svg.Attributes.title "sdaf", x (toString v.x), y (toString (v.y+30)), fill "red" ] [Svg.text "jkasdfl"]]
+            let (textWidth, textHeight) = getTextDimension v.title "Courier" 20
+                innerShapeWidth = textWidth + innerPadding.left + innerPadding.right
+                innerShapeHeight = textHeight + innerPadding.bottom + innerPadding.top
+                outerShapeWidth = innerShapeWidth + outerPadding.left + outerPadding.right
+                outerShapeHeight = innerShapeHeight + outerPadding.bottom + outerPadding.top
+            in
+                Debug.log ((toString textWidth) ++ (toString textHeight) ++ ", " ++ (toString outerShapeWidth))
+                g [][
+                    rect [ onMouseDown (Outer 31)
+                         , x (toString v.x)
+                         , y (toString <| v.y)
+                         , width <| toString outerShapeWidth
+                         , height <| toString outerShapeHeight
+                         ,  rx "15"
+                         , ry "10"
+                         , stroke "red"
+                         , strokeDasharray "10,10"
+                         , fill "#FFF9CE" ] [],
+                    rect [ onMouseDown (Inner 31)
+                         , x (toString (v.x + outerPadding.left))
+                         , y (toString (v.y + outerPadding.top))
+                         , width <| toString innerShapeWidth
+                         , height <| toString innerShapeHeight
+                         ,  rx "15"
+                         , ry "10"
+                         , fill "#0B79CE" ] [],
+                text' [ onMouseDown (Inner 31)
+                      , fontFamily myFontFamily
+                      ,  fontSize (toString myFontSize)
+                      ,  Svg.Attributes.cursor "default"
+                      , x (toString (v.x + outerPadding.left + innerPadding.left))
+                      , y (toString (v.y+outerPadding.top + innerPadding.top + (round ((toFloat textHeight) / 2)) + (round ((toFloat myFontSize) / 3))))
+                      , fill "red" ] [Svg.text v.title]]
         Action v ->
-            circle [ onMouseDown (Select v.id), cx (toString v.x), cy (toString v.y), r "45", fill "#0B79CE" ] []
+            circle [ onMouseDown (Inner v.id), cx (toString v.x), cy (toString v.y), r "45", fill "#0B79CE" ] []
         End v ->
-            circle [ onMouseDown (Select v.id), cx (toString v.x), cy (toString v.y), r "45", fill "#0B79CE" ] []
+            circle [ onMouseDown (Inner v.id), cx (toString v.x), cy (toString v.y), r "45", fill "#0B79CE" ] []
         Condition v ->
-            circle [ onMouseDown (Select v.id), cx (toString v.x), cy (toString v.y), r "45", fill "#0B79CE" ] []
+            circle [ onMouseDown (Inner v.id), cx (toString v.x), cy (toString v.y), r "45", fill "#0B79CE" ] []
         Output v ->
             let t = text' [ Svg.Attributes.title "sdaf", x (toString v.x), y (toString v.y), fill "red" ] [Svg.text "hasd"]
             in
@@ -126,6 +184,11 @@ fcShapeToSvg fcShape =
 
 
 
+getTextDimension : String -> String -> Int -> (Int, Int)
+getTextDimension text  font  fontSize = 
+    case font of
+        "Courier" -> (round ((toFloat (fontSize * (length text))) * 0.6), fontSize)
+        _ -> (round ((toFloat (fontSize * (length text))) * 0.6), fontSize)
 
 
 
