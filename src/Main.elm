@@ -11,12 +11,15 @@ import Keyboard
 import VirtualDom
 import Json.Encode exposing (..)
 import String exposing (length)
+import Char exposing (toCode, fromCode)
+import Maybe exposing (withDefault)
+import List exposing (head)
 
 myFontSize = 20
 myFontFamily = "Courier"
-innerPadding = 80.0
+innerPadding = 20.0
 
-outerPadding = 90.0
+outerPadding = 30.0
 
 paralleloGrammShift = 40
 
@@ -28,99 +31,186 @@ main =
     , subscriptions = subscriptions
     }
 
-type FcShape = 
-      Start FcShapeAttributes
-    | End FcShapeAttributes
-    | Condition FcShapeAttributes
-    | Output FcShapeAttributes
-    | Action FcShapeAttributes
-    
+type ShapeType = 
+      Start
+    | End
+    | Condition
+    | Output
+    | Action
 
-type alias FcShapeAttributes =
-    { id : Int
+
+type alias FcShape =
+    { id : Id
+    , shapeType : ShapeType
     , x : Float
     , y : Float
     , text : String
     , title : String }
 
 type FcPos = 
-      Offset (FcElement, Float, Float)
+      Offset (FcShape, Float, Float)
     | Global ( Float, Float)
 
-type FcElement = 
-      FcShapeElement FcShape
-    | FcArrowElement FcArrow
-
 type alias FcArrow = 
-    { id : Int
-    , pos : FcPos }
+    { id : Id
+    , startPos : FcPos
+    , endPos : FcPos }
 
+type alias Id = Int
 
-newStart : Float -> Float -> FcElement
-newStart x y = 
-    FcShapeElement <| Start
-        { id = 9
+createStartElement :Id ->  Float -> Float -> FcShape
+createStartElement id x y = 
+        { id = id
+        , shapeType = Start
+        , x = x
+        , y = y
+        , text = "Start"
+        , title = "Starthapes
+        j"
+        }
+
+createEndElement : Id -> Float -> Float -> FcShape
+createEndElement id x y = 
+        { id = id
+        , shapeType = End
         , x = x
         , y = y
         , text = "Start"
         , title = "Start1"
         }
 
+createConditionElement : Id -> Float -> Float -> FcShape
+createConditionElement id x y =
+        { id = id
+        , shapeType = Condition
+        , x = x
+        , y = y
+        , text = "Condition"
+        , title = "Mein Titel"
+        }
 
+type Element = 
+      ShapeElement FcShape
+    | ArrowElement FcArrow
+
+type ShapeAreaType = 
+      Outer
+    | Inner
+
+type alias ShapeArea = 
+    { areaType : ShapeAreaType
+    , id : Id }
+
+type Msg =
+      MouseDown Mouse.Position
+    | MouseUp Mouse.Position
+    | MouseMove Mouse.Position
+    | KeyMsg Keyboard.KeyCode
+    | ShapeMsg ShapeArea
 
 -- MODEL
 
 
 type alias Model =
-    { fcElements : List FcElement
+    { fcShapes : List FcShape
+    , fcArrows : List FcArrow
     , debugMsg : String
-    , dragElementId : Maybe Int }
+    , dragElement : Maybe ShapeArea
+    , dragOffsetX : Float
+    , dragOffsetY : Float
+    , selectedElement : Id }
 
 
 init : (Model, Cmd Msg)
 init =
-  ({fcElements = [ (FcShapeElement <| Start {id=1 ,x=40,y=90,text="",title="Start"})], debugMsg = "", dragElementId = Just 33}, Cmd.none)
-
-      --[ fcShapeToSvg (FcShapeElement <| Start {id=1 ,x=40,y=90,text="",title="Start"})]
-      --, fcShapeToSvg (Output {id=2, x=170, y=170, text="ABC", title="abcdefghijkl"})
-      --, fcShapeToSvg (Action {id=3, x=500, y=270, text="ABC", title="abcdefghijkl"})
-      --, fcShapeToSvg (Condition {id=2, x=770, y=170, text="ABC", title="123456897890132abcdefghijkl"})
-      --, line [ onMouseDown (Inner 3), x1 "750", y1 "50", x2 "69", y2 "90", stroke "#023963" ] []
-
+    ({
+        fcShapes =
+            [ ({id=1, shapeType=Start, x=40,y=90,text="",title="Start"})
+            , ({id=2, shapeType=Action, x=40,y=490,text="",title="Start"})
+            , ({id=3, shapeType=End, x=150,y=290,text="",title="End"})]
+        , fcArrows = []
+        , debugMsg = ""
+        , dragElement=Nothing
+        , dragOffsetX=0
+        , dragOffsetY=0
+        , selectedElement=1
+    }, Cmd.none)
 
 -- UPDATE
 
 
-type alias Id = Int
 
-type Msg =
-      MouseMsg Mouse.Position
-    | MouseUp Mouse.Position
-    | KeyMsg Keyboard.KeyCode
-    | Inner Id
-    | Outer Id
-    | Move Id
+getShapeWithId : Model -> Id -> Maybe FcShape
+getShapeWithId model id = 
+        head <| List.filter (\el -> el.id == id) model.fcShapes
+    
+
+findFreeId : Model -> Id
+findFreeId model = 
+    let minShapes = List.foldl (\el state -> if el.id >= state then el.id + 1 else state) 1 model.fcShapes
+        minArrows = List.foldl (\el state -> if el.id >= state then el.id + 1 else state) minShapes model.fcArrows
+    in
+        minArrows
+
+removeElement : Model -> Id -> Model
+removeElement model id =
+    let newShapes = List.foldr (\el state -> if el.id == id then state else (el::state)) [] model.fcShapes
+        newArrows = List.foldr (\el state -> if el.id == id then state else (el::state)) [] model.fcArrows
+    in
+        { model | fcShapes=newShapes, fcArrows=newArrows }
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    MouseMsg position -> {model | debugMsg = ("mouseMsg" ++ (toString position))} ! []
-    KeyMsg code -> {model | debugMsg = "keyMsg"} ! []
-    Inner id -> {model | debugMsg = "Inner " ++ (toString id)} ! []
-    Outer id -> {model | debugMsg = "Outer " ++ (toString id)} ! []
-    Move  id -> model ! []
+    MouseDown pos->
+        let id = 
+            case model.dragElement of
+                Nothing -> Nothing
+                (Just  ({areaType, id})) -> Just id
+            shapePos = Maybe.map (getShapeWithId model) id
+        in
+            case shapePos of
+                Just (Just el) -> { model | dragOffsetX=(toFloat pos.x)-el.x, dragOffsetY=(toFloat pos.y)-el.y } ! []
+                _ -> model ! []
+    KeyMsg code ->
+        case code of 
+            97 -> {model | debugMsg = "mouseUp", fcShapes = model.fcShapes ++ [ (createStartElement (findFreeId model) 400.0 400.0)]} ! []
+            127 -> (removeElement model model.selectedElement) ! []
+            _ -> model ! []
+    ShapeMsg { areaType, id} -> {model | dragElement=(Just <| {areaType=areaType, id=id}), selectedElement=id} ! []
     MouseUp pos ->
-        {model | debugMsg = "mouseUp", fcElements = model.fcElements ++ [newStart (toFloat pos.x) (toFloat pos.y)]} ! []
+        {model | debugMsg="released", dragElement=Nothing} ! []
+    MouseMove pos ->
+        let m = moveElementTo model model.dragElement (toFloat pos.x-model.dragOffsetX) (toFloat pos.y-model.dragOffsetY)
+        in
+            --{ m | debugMsg="jk;l" ++ (toString m.dragElement)} ! []
+            m ! []
 
 
+moveElementTo : Model -> Maybe ShapeArea -> Float -> Float -> Model
+moveElementTo model movingElement x y = 
+    case movingElement of
+        Nothing -> {model | debugMsg="not found"}
+        Just {areaType, id} ->
+            let newShapes = List.map (\el ->
+                    if el.id == id
+                    then
+                        Debug.log "test"
+                        {el | x = x, y=y}
+                    else
+                        Debug.log ("anderertest" ++ toString el.id ++ ", " ++ toString id)
+                        el
+                ) model.fcShapes
+            in
+                { model | debugMsg=toString id, fcShapes = newShapes }
 
 -- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch [ Keyboard.presses KeyMsg, Mouse.downs MouseMsg, Mouse.moves MouseMsg, Mouse.ups MouseUp]
+    Sub.batch [ Keyboard.presses KeyMsg, Mouse.downs MouseDown, Mouse.moves MouseMove, Mouse.ups MouseUp]
 
 
 
@@ -131,99 +221,104 @@ view : Model -> Html Msg
 view model =
     Debug.log model.debugMsg
     svg [ viewBox "0 0 1500 1500", width "1500"]
-        (List.map fcShapeToSvg model.fcElements)
+        (List.map (fcShapeToSvg model) model.fcShapes)
 
 
-fcShapeToSvg : FcElement -> Svg.Svg Msg
-fcShapeToSvg fcElement = 
-    case fcElement of
-        FcShapeElement (Start v) ->
-            let (textWidth, textHeight) = getTextDimension v.title "Courier" 20
+fcShapeToSvg : Model -> FcShape -> Svg.Svg Msg
+fcShapeToSvg model fcShape = 
+    let outerColor = "#FFF9CE"
+        innerColor = "blue"
+        strokeColor = if model.selectedElement == fcShape.id then "red" else outerColor
+        textColor = "red"
+    in
+    case fcShape.shapeType of
+        Start ->
+            let (textWidth, textHeight) = getTextDimension fcShape.title "Courier" 20
                 innerShapeWidth = textWidth + innerPadding + innerPadding
                 innerShapeHeight = textHeight + innerPadding + innerPadding
                 outerShapeWidth = innerShapeWidth + outerPadding + outerPadding
                 outerShapeHeight = innerShapeHeight + outerPadding + outerPadding
             in
                 g [][
-                    rect [ onMouseDown (Outer 31)
-                         , onMouseUp (Outer 922)
-                         , onMouseMove (Move 34)
-                         , x (toString v.x)
-                         , y (toString <| v.y)
+                    rect [ onMouseDown (ShapeMsg {areaType=Outer, id=fcShape.id})
+                         , onMouseUp (ShapeMsg {areaType=Outer, id=fcShape.id})
+                         , x (toString fcShape.x)
+                         , y (toString <| fcShape.y)
                          , width <| toString outerShapeWidth
                          , height <| toString outerShapeHeight
                          ,  rx "30"
                          , ry "30"
-                         , stroke "red"
+                         , stroke strokeColor
                          , strokeDasharray "10,10"
-                         , fill "#FFF9CE" ] [],
-                    rect [ onMouseDown (Inner 31)
-                         , x (toString (v.x + outerPadding))
-                         , y (toString (v.y + outerPadding))
+                         , fill outerColor] [],
+                    rect [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
+                         , x (toString (fcShape.x + outerPadding))
+                         , y (toString (fcShape.y + outerPadding))
                          , width <| toString innerShapeWidth
                          , height <| toString innerShapeHeight
                          ,  rx "25"
                          , ry "25"
-                         , fill "#0B79CE" ] [],
-                    text' [ onMouseDown (Inner 31)
-                          , pointerEvents "none"
+                         , fill innerColor ] [],
+                    text' [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
+                          , onMouseUp (ShapeMsg {areaType=Inner, id=fcShape.id})
                           , fontFamily myFontFamily
                           ,  fontSize (toString myFontSize)
                           ,  Svg.Attributes.cursor "default"
-                          , x (toString (v.x + outerPadding + innerPadding))
-                          , y (toString (v.y+outerPadding + innerPadding + textHeight / 2 + myFontSize/3))
-                          , fill "red" ] [Svg.text v.title]]
-        FcShapeElement (Action v) ->
-            let (textWidth, textHeight) = getTextDimension v.title "Courier" 20
+                          , x (toString (fcShape.x + outerPadding + innerPadding))
+                          , y (toString (fcShape.y+outerPadding + innerPadding + textHeight / 2 + myFontSize/3))
+                          , fill textColor] [Svg.text fcShape.title]]
+        Action ->
+            let (textWidth, textHeight) = getTextDimension fcShape.title "Courier" 20
                 innerShapeWidth = textWidth + innerPadding + innerPadding
                 innerShapeHeight = textHeight + innerPadding + innerPadding
                 outerShapeWidth = innerShapeWidth + outerPadding + outerPadding
                 outerShapeHeight = innerShapeHeight + outerPadding + outerPadding
             in
                 g [] [
-                    rect [ onMouseDown (Outer v.id)
-                         , x (toString v.x)
-                         , y (toString <| v.y)
+                    rect [ onMouseDown (ShapeMsg {areaType=Outer, id=fcShape.id})
+                         , x (toString fcShape.x)
+                         , y (toString <| fcShape.y)
                          , width <| toString outerShapeWidth
                          , height <| toString outerShapeHeight
-                         , stroke "red"
+                         , stroke strokeColor
                          , strokeDasharray "10,10"
-                         , fill "#FFF9CE" ] [],
-                    rect [ onMouseDown (Inner 31)
-                         , x (toString (v.x + outerPadding))
-                         , y (toString (v.y + outerPadding))
+                         , fill outerColor] [],
+                    rect [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
+                         , x (toString (fcShape.x + outerPadding))
+                         , y (toString (fcShape.y + outerPadding))
                          , width <| toString innerShapeWidth
                          , height <| toString innerShapeHeight
-                         , fill "#0B79CE" ] [],
-                    text' [ onMouseDown (Inner v.id)
+                         , fill innerColor ] [],
+                    text' [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
                           , fontFamily myFontFamily
                           ,  fontSize (toString myFontSize)
                           ,  Svg.Attributes.cursor "default"
-                          , x (toString (v.x + outerPadding + innerPadding))
-                          , y (toString (v.y+outerPadding + innerPadding + textHeight / 2 + myFontSize / 3))
-                          , fill "red" ] [Svg.text v.title]]
-        FcShapeElement (End v) ->
-            circle [ onMouseDown (Inner v.id), cx (toString v.x), cy (toString v.y), r "45", fill "#0B79CE" ] []
-        FcShapeElement (Condition v) ->
-            let (textWidth, textHeight) = getTextDimension v.title "Courier" 20
+                          , x (toString (fcShape.x + outerPadding + innerPadding))
+                          , y (toString (fcShape.y+outerPadding + innerPadding + textHeight / 2 + myFontSize / 3))
+                          , fill textColor ] [Svg.text fcShape.title]]
+        End ->
+            circle [] []
+            --circle [ onMouseDown (Inner fcShape.id), cx (toString fcShape.x), cy (toString fcShape.y), r "45", fill "#0B79CE" ] []
+        Condition ->
+            let (textWidth, textHeight) = getTextDimension fcShape.title "Courier" 20
                 innerShapeWidth = textWidth + innerPadding + innerPadding
                 innerShapeHeight = textHeight + innerPadding + innerPadding
                 outerShapeWidth = innerShapeWidth + outerPadding + outerPadding
                 outerShapeHeight = innerShapeHeight + outerPadding + outerPadding
-                innerStartX = v.x + outerPadding -- - smallAmount
-                innerStartY = v.y + outerPadding
+                innerStartX = fcShape.x + outerPadding -- - smallAmount
+                innerStartY = fcShape.y + outerPadding
             in
                 g [][
-                    polygon[ onMouseDown (Outer 32)
-                         , points ((toString <| v.x) ++ "," ++ (toString <| v.y + outerShapeHeight/2) ++ " "
-                                ++ (toString (v.x + outerShapeWidth/2)) ++ "," ++ (toString v.y) ++ " "
-                                ++ (toString (v.x + outerShapeWidth)) ++ "," ++ (toString (v.y + outerShapeHeight/2)) ++ " "
-                                ++ (toString <| v.x + outerShapeWidth / 2) ++ "," ++ (toString (v.y + outerShapeHeight)) ++ " ")
+                    polygon[ onMouseDown (ShapeMsg {areaType=Outer, id=fcShape.id})
+                         , points ((toString <| fcShape.x) ++ "," ++ (toString <| fcShape.y + outerShapeHeight/2) ++ " "
+                                ++ (toString (fcShape.x + outerShapeWidth/2)) ++ "," ++ (toString fcShape.y) ++ " "
+                                ++ (toString (fcShape.x + outerShapeWidth)) ++ "," ++ (toString (fcShape.y + outerShapeHeight/2)) ++ " "
+                                ++ (toString <| fcShape.x + outerShapeWidth / 2) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " ")
 
                          , stroke "red"
                          , strokeDasharray "10,10"
                          , fill "#FFF9CE" ] [],
-                    polygon [ onMouseDown (Inner 32)
+                    polygon [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
                          , points ((toString <| innerStartX) ++ "," ++ (toString <| innerStartY + innerShapeHeight/2) ++ " "
                                 ++ (toString (innerStartX + innerShapeWidth/2)) ++ "," ++ (toString <| innerStartY) ++ " "
                                 ++ (toString (innerStartX + innerShapeWidth)) ++ "," ++ (toString (innerStartY + innerShapeHeight/2)) ++ " "
@@ -231,49 +326,46 @@ fcShapeToSvg fcElement =
 
                          , stroke "blue"
                          , fill "#FFF9CE" ] [],
-                    text' [ onMouseDown (Inner 31)
+                    text' [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
                           , fontFamily myFontFamily
                           ,  fontSize (toString myFontSize)
                           ,  Svg.Attributes.cursor "default"
-                          , x (toString (v.x + outerPadding + innerPadding))
-                          , y (toString (v.y+outerPadding + innerPadding + textHeight / 2 + myFontSize / 3))
-                          , fill "red" ] [Svg.text v.title]]
-        FcShapeElement (Output v) ->
-            let (textWidth, textHeight) = getTextDimension v.title "Courier" 20
+                          , x (toString (fcShape.x + outerPadding + innerPadding))
+                          , y (toString (fcShape.y+outerPadding + innerPadding + textHeight / 2 + myFontSize / 3))
+                          , fill "red" ] [Svg.text fcShape.title]]
+        Output ->
+            let (textWidth, textHeight) = getTextDimension fcShape.title "Courier" 20
                 innerShapeWidth = textWidth + innerPadding + innerPadding
                 innerShapeHeight = textHeight + innerPadding + innerPadding
                 outerShapeWidth = innerShapeWidth + outerPadding + outerPadding
                 outerShapeHeight = innerShapeHeight + outerPadding + outerPadding
-                innerStartX = v.x + innerPadding -- - smallAmount
-                innerStartY = v.y + innerPadding
+                innerStartX = fcShape.x + innerPadding -- - smallAmount
+                innerStartY = fcShape.y + innerPadding
             in
                 g [][
-                    polygon[ onMouseDown (Outer 32)
-                         , points ((toString <| v.x) ++ "," ++ (toString v.y) ++ " "
-                                ++ (toString (v.x + outerShapeWidth)) ++ "," ++ (toString v.y) ++ " "
-                                ++ (toString (v.x - paralleloGrammShift + outerShapeWidth)) ++ "," ++ (toString (v.y + outerShapeHeight)) ++ " "
-                                ++ (toString <| v.x - paralleloGrammShift) ++ "," ++ (toString (v.y + outerShapeHeight)) ++ " ")
+                    polygon[ onMouseDown (ShapeMsg {areaType=Outer, id=fcShape.id})
+                         , points ((toString <| fcShape.x) ++ "," ++ (toString fcShape.y) ++ " "
+                                ++ (toString (fcShape.x + outerShapeWidth)) ++ "," ++ (toString fcShape.y) ++ " "
+                                ++ (toString (fcShape.x - paralleloGrammShift + outerShapeWidth)) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " "
+                                ++ (toString <| fcShape.x - paralleloGrammShift) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " ")
 
                          , stroke "red"
                          , strokeDasharray "10,10"
                          , fill "#FFF9CE" ] [],
-                    polygon[ onMouseDown (Inner 32)
-                         , points ((toString <| v.x ) ++ "," ++ (toString v.y) ++ " "
-                                ++ (toString (v.x + outerShapeWidth)) ++ "," ++ (toString v.y) ++ " "
-                                ++ (toString (v.x - paralleloGrammShift + outerShapeWidth)) ++ "," ++ (toString (v.y + outerShapeHeight)) ++ " "
-                                ++ (toString <| v.x - paralleloGrammShift) ++ "," ++ (toString (v.y + outerShapeHeight)) ++ " ")
+                    polygon[ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
+                         , points ((toString <| fcShape.x ) ++ "," ++ (toString fcShape.y) ++ " "
+                                ++ (toString (fcShape.x + outerShapeWidth)) ++ "," ++ (toString fcShape.y) ++ " "
+                                ++ (toString (fcShape.x - paralleloGrammShift + outerShapeWidth)) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " "
+                                ++ (toString <| fcShape.x - paralleloGrammShift) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " ")
                          , stroke "blue"
                          , fill "#FFF9CE" ] [],
-                    text' [ onMouseDown (Inner 31)
+                    text' [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
                           , fontFamily myFontFamily
                           ,  fontSize (toString myFontSize)
                           ,  Svg.Attributes.cursor "default"
-                          , x (toString (v.x + outerPadding + innerPadding))
-                          , y (toString (v.y+outerPadding + innerPadding + textHeight / 2 + myFontSize / 3))
-                          , fill "red" ] [Svg.text v.title]]
-        FcArrowElement v ->
-            g [][]
-
+                          , x (toString (fcShape.x + outerPadding + innerPadding))
+                          , y (toString (fcShape.y+outerPadding + innerPadding + textHeight / 2 + myFontSize / 3))
+                          , fill "red" ] [Svg.text fcShape.title]]
 
 
 getTextDimension : String -> String -> Int -> (Float,Float)
