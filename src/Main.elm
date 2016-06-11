@@ -8,8 +8,9 @@ import Debug as Debug
 import Svg.Events exposing (onMouseUp, onMouseDown, onClick, onMouseMove)
 import Mouse
 import Keyboard
-import VirtualDom
+import VirtualDom exposing (onWithOptions)
 import Json.Encode exposing (..)
+import Json.Decode as Json exposing(..)
 import String exposing (length)
 import Char exposing (toCode, fromCode)
 import Maybe exposing (withDefault)
@@ -22,6 +23,8 @@ innerPadding = 20.0
 outerPadding = 30.0
 
 paralleloGrammShift = 40
+
+options = {preventDefault=True, stopPropagation=False}
 
 main =
   Html.program
@@ -105,7 +108,8 @@ type Msg =
     | MouseUp Mouse.Position
     | MouseMove Mouse.Position
     | KeyMsg Keyboard.KeyCode
-    | ShapeMsg ShapeArea
+    | DownMsg ShapeArea
+    | UpMsg ShapeArea
 
 -- MODEL
 
@@ -167,6 +171,8 @@ removeElement model id =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
+        DownMsg { areaType, id} ->
+            {model | dragElement=(Just {areaType=areaType, id=id}), selectedElement=id, currentLine=Just (Offset (id, 0, 0), Offset (id, 0, 0)) } ! []
         MouseDown pos->
             let id = 
                     case model.dragElement of
@@ -175,16 +181,44 @@ update msg model =
                 shapePos = Maybe.map (getElementWithId model) id
             in
                 case shapePos of
-                    Just (Just el) -> { model | dragOffsetX=(toFloat pos.x)-el.x, dragOffsetY=(toFloat pos.y)-el.y } ! []
-                    _ -> model ! []
+                    Just (Just el) ->
+                        let offsetX=(toFloat pos.x)-el.x
+                            offsetY=(toFloat pos.y)-el.y
+                        in
+                        { model | dragOffsetX=offsetX
+                                , dragOffsetY=offsetY
+                                , currentLine=Maybe.map (\(s, e) -> 
+                                                    case s of 
+                                                        Offset (id, x, y) -> (Offset (id, offsetX, offsetY), Offset (id, offsetX, offsetY))
+                                                        _ -> (s, e))
+                                     model.currentLine } ! []
+                    _ ->
+                        Debug.log "soll das so sein?"
+                        model ! []
         KeyMsg code ->
             case code of 
-                97 -> {model | debugMsg = "mouseUp", fcShapes = model.fcShapes ++ [ (createStartElement (findFreeId model) 400.0 400.0)]} ! []
+                97 -> {model | debugMsg = "a pressed", fcShapes = model.fcShapes ++ [ (createStartElement (findFreeId model) 400.0 400.0)]} ! []
                 127 -> (removeElement model model.selectedElement) ! []
                 _ -> model ! []
-        ShapeMsg { areaType, id} -> {model | dragElement=(Just <| {areaType=areaType, id=id}), selectedElement=id} ! []
+        UpMsg { areaType, id} ->
+            {model |dragElement=Nothing, currentLine=Maybe.map (\l -> (fst l, Offset (id, 0, 0))) model.currentLine } ! []
         MouseUp pos ->
-            {model | debugMsg="released", dragElement=Nothing} ! []
+            let arrow = Maybe.map (\l -> { id=findFreeId model, startPos=(fst l), endPos=(snd l) }) model.currentLine
+                h = case arrow of 
+                    Nothing -> []
+                    Just a ->
+                        case a.endPos of
+                            Offset (id, _, _) ->
+                                let element = getElementWithId model id
+                                    (offsetX, offsetY) = 
+                                        case element of
+                                            Nothing -> (0.0, 0.0)
+                                            Just el -> (toFloat pos.x - el.x, toFloat pos.y - el.y)
+                                in
+                                    if (isSameElement a.startPos a.endPos) then [] else [{id= a.id, startPos=a.startPos, endPos=Offset (id, offsetX, offsetY)}]
+                            _ -> []
+            in
+                {model | dragElement=Nothing, fcArrows=(h++model.fcArrows), currentLine=Nothing } ! []
         MouseMove pos ->
             case model.dragElement of
                 Nothing -> model ! []
@@ -200,7 +234,7 @@ update msg model =
                                     case element of
                                         Nothing -> model
                                         Just el -> 
-                                            { model | currentLine=Just (Global (el.x + model.dragOffsetX, el.y + model.dragOffsetY), Global (toFloat pos.x, toFloat pos.y))}
+                                            { model | currentLine=(Maybe.map (\(startPos, _) -> (startPos, Global (toFloat pos.x, toFloat pos.y))) model.currentLine)}
                             in
                                 m ! []
 
@@ -213,16 +247,23 @@ moveElementTo model movingElement x y =
             let newShapes = List.map (\el ->
                     if el.id == id
                     then
-                        Debug.log "test"
                         {el | x = x, y=y}
                     else
-                        Debug.log ("anderertest" ++ toString el.id ++ ", " ++ toString id)
                         el
                 ) model.fcShapes
             in
                 { model | debugMsg=toString id, fcShapes = newShapes }
 
--- SUBSCRIPTIONS
+
+isSameElement : FcPos -> FcPos -> Bool
+isSameElement pos1 pos2 =
+    case pos1 of
+        Offset (id1, _, _) ->
+            case pos2 of
+                Offset (id2, _, _) -> id1 == id2
+                _ -> False
+        _ -> False
+
 
 
 subscriptions : Model -> Sub Msg
@@ -242,7 +283,7 @@ view model =
             Just (startPos, endPos)-> [fcArrowToSvg model {id=-1, startPos=startPos, endPos=endPos}]
     in
     Debug.log model.debugMsg
-    svg [ viewBox "0 0 1500 1500", width "1500"]
+    svg [ viewBox "0 0 1500 1500", width "1500",  pointerEvents "none"]
         (List.map (fcShapeToSvg model) model.fcShapes ++
          List.map (fcArrowToSvg model) model.fcArrows ++
          cur)
@@ -272,6 +313,7 @@ fcArrowToSvg model {id, startPos, endPos} =
     in
         line [x1 (toString <| startX), y1 (toString <| startY), x2 (toString <| endX), y2 (toString <| endY), Svg.Attributes.style "stroke:rgb(255,0,0);stroke-width:2", markerEnd "url(#triangle)"] []
 
+
 fcShapeToSvg : Model -> FcShape -> Svg.Svg Msg
 fcShapeToSvg model fcShape = 
     let outerColor = "#FFF9CE"
@@ -287,9 +329,10 @@ fcShapeToSvg model fcShape =
                 outerShapeWidth = innerShapeWidth + outerPadding + outerPadding
                 outerShapeHeight = innerShapeHeight + outerPadding + outerPadding
             in
-                g [][
-                    rect [ onMouseDown (ShapeMsg {areaType=Outer, id=fcShape.id})
-                         , onMouseUp (ShapeMsg {areaType=Outer, id=fcShape.id})
+                g [ pointerEvents "all"] [
+                         
+                    rect [ onMouseDown (DownMsg {areaType=Outer, id=fcShape.id})
+                         , onMouseUp (UpMsg {areaType=Outer, id=fcShape.id})
                          , x (toString fcShape.x)
                          , y (toString <| fcShape.y)
                          , width <| toString outerShapeWidth
@@ -298,8 +341,10 @@ fcShapeToSvg model fcShape =
                          , ry "30"
                          , stroke strokeColor
                          , strokeDasharray "10,10"
-                         , fill outerColor] [],
-                    rect [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
+                         , fill outerColor
+                         ] [],
+                    rect [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
+                         , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
                          , x (toString (fcShape.x + outerPadding))
                          , y (toString (fcShape.y + outerPadding))
                          , width <| toString innerShapeWidth
@@ -307,10 +352,10 @@ fcShapeToSvg model fcShape =
                          ,  rx "25"
                          , ry "25"
                          , fill innerColor ] [],
-                    text' [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
+                    text' [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
+                          , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
                           , pointerEvents "none"
                           , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
-                          , onMouseUp (ShapeMsg {areaType=Inner, id=fcShape.id})
                           , fontFamily myFontFamily
                           ,  fontSize (toString myFontSize)
                           ,  Svg.Attributes.cursor "default"
@@ -324,8 +369,9 @@ fcShapeToSvg model fcShape =
                 outerShapeWidth = innerShapeWidth + outerPadding + outerPadding
                 outerShapeHeight = innerShapeHeight + outerPadding + outerPadding
             in
-                g [] [
-                    rect [ onMouseDown (ShapeMsg {areaType=Outer, id=fcShape.id})
+                g [ pointerEvents "all"] [
+                    rect [ onMouseDown (DownMsg {areaType=Outer, id=fcShape.id})
+                          , onMouseUp (UpMsg {areaType=Outer, id=fcShape.id})
                          , x (toString fcShape.x)
                          , y (toString <| fcShape.y)
                          , width <| toString outerShapeWidth
@@ -333,13 +379,15 @@ fcShapeToSvg model fcShape =
                          , stroke strokeColor
                          , strokeDasharray "10,10"
                          , fill outerColor] [],
-                    rect [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
+                    rect [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
+                          , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
                          , x (toString (fcShape.x + outerPadding))
                          , y (toString (fcShape.y + outerPadding))
                          , width <| toString innerShapeWidth
                          , height <| toString innerShapeHeight
                          , fill innerColor ] [],
-                    text' [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
+                    text' [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
+                          , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
                           , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                           , fontFamily myFontFamily
                           ,  fontSize (toString myFontSize)
@@ -348,7 +396,7 @@ fcShapeToSvg model fcShape =
                           , y (toString (fcShape.y+outerPadding + innerPadding + textHeight / 2 + myFontSize / 3))
                           , fill textColor ] [Svg.text fcShape.title]]
         End ->
-            circle [] []
+                circle [ pointerEvents "all"] []
             --circle [ onMouseDown (Inner fcShape.id), cx (toString fcShape.x), cy (toString fcShape.y), r "45", fill "#0B79CE" ] []
         Condition ->
             let (textWidth, textHeight) = getTextDimension fcShape.title "Courier" 20
@@ -359,8 +407,8 @@ fcShapeToSvg model fcShape =
                 innerStartX = fcShape.x + outerPadding -- - smallAmount
                 innerStartY = fcShape.y + outerPadding
             in
-                g [][
-                    polygon[ onMouseDown (ShapeMsg {areaType=Outer, id=fcShape.id})
+                g [pointerEvents "all"] [
+                    polygon[ onMouseDown (DownMsg {areaType=Outer, id=fcShape.id})
                          , points ((toString <| fcShape.x) ++ "," ++ (toString <| fcShape.y + outerShapeHeight/2) ++ " "
                                 ++ (toString (fcShape.x + outerShapeWidth/2)) ++ "," ++ (toString fcShape.y) ++ " "
                                 ++ (toString (fcShape.x + outerShapeWidth)) ++ "," ++ (toString (fcShape.y + outerShapeHeight/2)) ++ " "
@@ -369,7 +417,7 @@ fcShapeToSvg model fcShape =
                          , stroke "red"
                          , strokeDasharray "10,10"
                          , fill "#FFF9CE" ] [],
-                    polygon [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
+                    polygon [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
                          , points ((toString <| innerStartX) ++ "," ++ (toString <| innerStartY + innerShapeHeight/2) ++ " "
                                 ++ (toString (innerStartX + innerShapeWidth/2)) ++ "," ++ (toString <| innerStartY) ++ " "
                                 ++ (toString (innerStartX + innerShapeWidth)) ++ "," ++ (toString (innerStartY + innerShapeHeight/2)) ++ " "
@@ -377,7 +425,7 @@ fcShapeToSvg model fcShape =
 
                          , stroke "blue"
                          , fill "#FFF9CE" ] [],
-                    text' [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
+                    text' [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
                           , fontFamily myFontFamily
                           ,  fontSize (toString myFontSize)
                           ,  Svg.Attributes.cursor "default"
@@ -393,8 +441,8 @@ fcShapeToSvg model fcShape =
                 innerStartX = fcShape.x + innerPadding -- - smallAmount
                 innerStartY = fcShape.y + innerPadding
             in
-                g [][
-                    polygon[ onMouseDown (ShapeMsg {areaType=Outer, id=fcShape.id})
+                g [ pointerEvents "all"] [
+                    polygon[ onMouseDown (DownMsg {areaType=Outer, id=fcShape.id})
                          , points ((toString <| fcShape.x) ++ "," ++ (toString fcShape.y) ++ " "
                                 ++ (toString (fcShape.x + outerShapeWidth)) ++ "," ++ (toString fcShape.y) ++ " "
                                 ++ (toString (fcShape.x - paralleloGrammShift + outerShapeWidth)) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " "
@@ -403,14 +451,14 @@ fcShapeToSvg model fcShape =
                          , stroke "red"
                          , strokeDasharray "10,10"
                          , fill "#FFF9CE" ] [],
-                    polygon[ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
+                    polygon[ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
                          , points ((toString <| fcShape.x ) ++ "," ++ (toString fcShape.y) ++ " "
                                 ++ (toString (fcShape.x + outerShapeWidth)) ++ "," ++ (toString fcShape.y) ++ " "
                                 ++ (toString (fcShape.x - paralleloGrammShift + outerShapeWidth)) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " "
                                 ++ (toString <| fcShape.x - paralleloGrammShift) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " ")
                          , stroke "blue"
                          , fill "#FFF9CE" ] [],
-                    text' [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
+                    text' [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
                           , fontFamily myFontFamily
                           ,  fontSize (toString myFontSize)
                           ,  Svg.Attributes.cursor "default"
