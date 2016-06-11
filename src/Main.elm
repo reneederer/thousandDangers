@@ -2,6 +2,7 @@ module Main exposing (..)
 
 import Html exposing (Html)
 import Html.App as Html
+import Http
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Debug as Debug
@@ -15,6 +16,7 @@ import String exposing (length)
 import Char exposing (toCode, fromCode)
 import Maybe exposing (withDefault)
 import List exposing (head)
+import Task exposing (..)
 
 myFontSize = 20
 myFontFamily = "Courier"
@@ -110,6 +112,8 @@ type Msg =
     | KeyMsg Keyboard.KeyCode
     | DownMsg ShapeArea
     | UpMsg ShapeArea
+    | HttpSuccess String
+    | HttpFailure String
 
 -- MODEL
 
@@ -168,6 +172,34 @@ removeElement model id =
         { model | fcShapes=newShapes, fcArrows=newArrows }
 
 
+
+
+
+lookupZipCode : Task Http.Error (List String)
+lookupZipCode =
+    let s = Http.get places ("http://localhost/elm/thousandDangers/src/db.php")
+    in 
+        Debug.log "s ist " s
+
+
+places : Json.Decoder (List String)
+places =
+    let place =
+        Json.object2 (\city state -> city ++ ", " ++ state)
+            ("place" := Json.string)
+            ("state" := Json.string)
+    in
+        "places" := Json.list place
+
+
+
+
+
+
+
+
+
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
@@ -198,8 +230,14 @@ update msg model =
         KeyMsg code ->
             case code of 
                 97 -> {model | debugMsg = "a pressed", fcShapes = model.fcShapes ++ [ (createStartElement (findFreeId model) 400.0 400.0)]} ! []
+                98 ->
+                    let x = lookupZipCode |> perform (\a -> HttpFailure <| toString a) (\a -> HttpSuccess <| toString a)
+                    in
+                        {model | debugMsg="b" ++ toString x} ! [x]
                 127 -> (removeElement model model.selectedElement) ! []
                 _ -> model ! []
+        HttpSuccess s -> {model | debugMsg="great success"++s} ! []
+        HttpFailure s -> {model | debugMsg="unfortunatelyfailure"++s} ! []
         UpMsg { areaType, id} ->
             {model |dragElement=Nothing, currentLine=Maybe.map (\l -> (fst l, Offset (id, 0, 0))) model.currentLine } ! []
         MouseUp pos ->
@@ -284,9 +322,13 @@ view model =
     in
     Debug.log model.debugMsg
     svg [ viewBox "0 0 1500 1500", width "1500",  pointerEvents "none"]
+        (([defs []
+            [marker [id "arrowHead", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "-2", refY "0", orient "auto"]
+                    [polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]]
+        ]) ++
         (List.map (fcShapeToSvg model) model.fcShapes ++
          List.map (fcArrowToSvg model) model.fcArrows ++
-         cur)
+         cur))
 
 
 
@@ -311,7 +353,7 @@ fcArrowToSvg model {id, startPos, endPos} =
                             Nothing -> (0, 0)
                             Just e -> (x + e.x, y + e.y)
     in
-        line [x1 (toString <| startX), y1 (toString <| startY), x2 (toString <| endX), y2 (toString <| endY), Svg.Attributes.style "stroke:rgb(255,0,0);stroke-width:2", markerEnd "url(#triangle)"] []
+        line [x1 (toString <| startX), y1 (toString <| startY), x2 (toString <| endX), y2 (toString <| endY), markerEnd "url(#arrowHead)", Svg.Attributes.style "stroke:rgb(255,0,0);stroke-width:2"] []
 
 
 fcShapeToSvg : Model -> FcShape -> Svg.Svg Msg
