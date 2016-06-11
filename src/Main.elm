@@ -48,7 +48,7 @@ type alias FcShape =
     , title : String }
 
 type FcPos = 
-      Offset (FcShape, Float, Float)
+      Offset (Id, Float, Float)
     | Global ( Float, Float)
 
 type alias FcArrow = 
@@ -65,8 +65,7 @@ createStartElement id x y =
         , x = x
         , y = y
         , text = "Start"
-        , title = "Starthapes
-        j"
+        , title = "Start"
         }
 
 createEndElement : Id -> Float -> Float -> FcShape
@@ -75,8 +74,8 @@ createEndElement id x y =
         , shapeType = End
         , x = x
         , y = y
-        , text = "Start"
-        , title = "Start1"
+        , text = "Ende"
+        , title = "Ende"
         }
 
 createConditionElement : Id -> Float -> Float -> FcShape
@@ -89,7 +88,7 @@ createConditionElement id x y =
         , title = "Mein Titel"
         }
 
-type Element = 
+type FcElement = 
       ShapeElement FcShape
     | ArrowElement FcArrow
 
@@ -118,7 +117,8 @@ type alias Model =
     , dragElement : Maybe ShapeArea
     , dragOffsetX : Float
     , dragOffsetY : Float
-    , selectedElement : Id }
+    , selectedElement : Id
+    , currentLine : Maybe (FcPos, FcPos)}
 
 
 init : (Model, Cmd Msg)
@@ -126,23 +126,27 @@ init =
     ({
         fcShapes =
             [ ({id=1, shapeType=Start, x=40,y=90,text="",title="Start"})
-            , ({id=2, shapeType=Action, x=40,y=490,text="",title="Start"})
+            , ({id=2, shapeType=Action, x=40,y=490,text="",title="Action"})
             , ({id=3, shapeType=End, x=150,y=290,text="",title="End"})]
-        , fcArrows = []
+        , fcArrows =
+            [ ({id=4, startPos= Offset (1, 10, 40), endPos=Offset (2, 50, 5)})
+            , ({id=5, startPos=Global (190, 50), endPos=Global (800, 500)}) ]
         , debugMsg = ""
         , dragElement=Nothing
         , dragOffsetX=0
         , dragOffsetY=0
         , selectedElement=1
+        , currentLine=Nothing
     }, Cmd.none)
 
 -- UPDATE
 
 
 
-getShapeWithId : Model -> Id -> Maybe FcShape
-getShapeWithId model id = 
-        head <| List.filter (\el -> el.id == id) model.fcShapes
+getElementWithId : Model -> Id -> Maybe FcShape
+getElementWithId model id = 
+    head <| List.filter (\el -> el.id == id) model.fcShapes
+
     
 
 findFreeId : Model -> Id
@@ -162,30 +166,43 @@ removeElement model id =
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
-  case msg of
-    MouseDown pos->
-        let id = 
-            case model.dragElement of
-                Nothing -> Nothing
-                (Just  ({areaType, id})) -> Just id
-            shapePos = Maybe.map (getShapeWithId model) id
-        in
-            case shapePos of
-                Just (Just el) -> { model | dragOffsetX=(toFloat pos.x)-el.x, dragOffsetY=(toFloat pos.y)-el.y } ! []
+    case msg of
+        MouseDown pos->
+            let id = 
+                    case model.dragElement of
+                        Nothing -> Nothing
+                        (Just  ({areaType, id})) -> Just id
+                shapePos = Maybe.map (getElementWithId model) id
+            in
+                case shapePos of
+                    Just (Just el) -> { model | dragOffsetX=(toFloat pos.x)-el.x, dragOffsetY=(toFloat pos.y)-el.y } ! []
+                    _ -> model ! []
+        KeyMsg code ->
+            case code of 
+                97 -> {model | debugMsg = "mouseUp", fcShapes = model.fcShapes ++ [ (createStartElement (findFreeId model) 400.0 400.0)]} ! []
+                127 -> (removeElement model model.selectedElement) ! []
                 _ -> model ! []
-    KeyMsg code ->
-        case code of 
-            97 -> {model | debugMsg = "mouseUp", fcShapes = model.fcShapes ++ [ (createStartElement (findFreeId model) 400.0 400.0)]} ! []
-            127 -> (removeElement model model.selectedElement) ! []
-            _ -> model ! []
-    ShapeMsg { areaType, id} -> {model | dragElement=(Just <| {areaType=areaType, id=id}), selectedElement=id} ! []
-    MouseUp pos ->
-        {model | debugMsg="released", dragElement=Nothing} ! []
-    MouseMove pos ->
-        let m = moveElementTo model model.dragElement (toFloat pos.x-model.dragOffsetX) (toFloat pos.y-model.dragOffsetY)
-        in
-            --{ m | debugMsg="jk;l" ++ (toString m.dragElement)} ! []
-            m ! []
+        ShapeMsg { areaType, id} -> {model | dragElement=(Just <| {areaType=areaType, id=id}), selectedElement=id} ! []
+        MouseUp pos ->
+            {model | debugMsg="released", dragElement=Nothing} ! []
+        MouseMove pos ->
+            case model.dragElement of
+                Nothing -> model ! []
+                Just {areaType, id} -> 
+                    case areaType of
+                        Inner ->
+                            let m = moveElementTo model model.dragElement (toFloat pos.x-model.dragOffsetX) (toFloat pos.y-model.dragOffsetY)
+                            in
+                                m ! []
+                        Outer ->
+                            let element = getElementWithId model id
+                                m = 
+                                    case element of
+                                        Nothing -> model
+                                        Just el -> 
+                                            { model | currentLine=Just (Global (el.x + model.dragOffsetX, el.y + model.dragOffsetY), Global (toFloat pos.x, toFloat pos.y))}
+                            in
+                                m ! []
 
 
 moveElementTo : Model -> Maybe ShapeArea -> Float -> Float -> Model
@@ -219,10 +236,41 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
+    let cur = 
+        case model.currentLine of
+            Nothing -> []
+            Just (startPos, endPos)-> [fcArrowToSvg model {id=-1, startPos=startPos, endPos=endPos}]
+    in
     Debug.log model.debugMsg
     svg [ viewBox "0 0 1500 1500", width "1500"]
-        (List.map (fcShapeToSvg model) model.fcShapes)
+        (List.map (fcShapeToSvg model) model.fcShapes ++
+         List.map (fcArrowToSvg model) model.fcArrows ++
+         cur)
 
+
+
+fcArrowToSvg : Model -> FcArrow -> Svg.Svg Msg
+fcArrowToSvg model {id, startPos, endPos} = 
+    let (startX, startY) = 
+        case startPos of
+            Global (x, y) -> (x, y)
+            Offset (id, x, y) ->
+                let el = getElementWithId model id
+                in
+                    case el of
+                        Nothing -> (0, 0)
+                        Just e -> (x + e.x, y + e.y)
+        (endX, endY) = 
+            case endPos of
+                Global (x, y) -> (x, y)
+                Offset (id, x, y) ->
+                    let el = getElementWithId model id
+                    in
+                        case el of
+                            Nothing -> (0, 0)
+                            Just e -> (x + e.x, y + e.y)
+    in
+        line [x1 (toString <| startX), y1 (toString <| startY), x2 (toString <| endX), y2 (toString <| endY), Svg.Attributes.style "stroke:rgb(255,0,0);stroke-width:2", markerEnd "url(#triangle)"] []
 
 fcShapeToSvg : Model -> FcShape -> Svg.Svg Msg
 fcShapeToSvg model fcShape = 
@@ -260,6 +308,8 @@ fcShapeToSvg model fcShape =
                          , ry "25"
                          , fill innerColor ] [],
                     text' [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
+                          , pointerEvents "none"
+                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                           , onMouseUp (ShapeMsg {areaType=Inner, id=fcShape.id})
                           , fontFamily myFontFamily
                           ,  fontSize (toString myFontSize)
@@ -290,6 +340,7 @@ fcShapeToSvg model fcShape =
                          , height <| toString innerShapeHeight
                          , fill innerColor ] [],
                     text' [ onMouseDown (ShapeMsg {areaType=Inner, id=fcShape.id})
+                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                           , fontFamily myFontFamily
                           ,  fontSize (toString myFontSize)
                           ,  Svg.Attributes.cursor "default"
