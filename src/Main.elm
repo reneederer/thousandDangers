@@ -17,14 +17,13 @@ import Char exposing (toCode, fromCode)
 import Maybe exposing (withDefault)
 import List exposing (head)
 import Task exposing (..)
+import String
 
 myFontSize = 20
 myFontFamily = "Courier"
 innerPadding = 20.0
 
 outerPadding = 30.0
-
-paralleloGrammShift = 40
 
 options = {preventDefault=True, stopPropagation=False}
 
@@ -40,7 +39,6 @@ type ShapeType =
       Start
     | End
     | Condition
-    | Output
     | Action
 
 
@@ -59,7 +57,8 @@ type FcPos =
 type alias FcArrow = 
     { id : Id
     , startPos : FcPos
-    , endPos : FcPos }
+    , endPos : FcPos
+    , title : String }
 
 type alias Id = Int
 
@@ -112,8 +111,8 @@ type Msg =
     | KeyMsg Keyboard.KeyCode
     | DownMsg ShapeArea
     | UpMsg ShapeArea
-    | HttpSuccess String
-    | HttpFailure String
+    | HttpSuccess (List FcShape, List FcArrow)
+    | HttpFailure (List FcShape, List FcArrow)
 
 -- MODEL
 
@@ -137,8 +136,8 @@ init =
             , ({id=2, shapeType=Action, x=40,y=490,text="",title="Action"})
             , ({id=3, shapeType=End, x=150,y=290,text="",title="End"})]
         , fcArrows =
-            [ ({id=4, startPos= Offset (1, 10, 40), endPos=Offset (2, 50, 5)})
-            , ({id=5, startPos=Global (190, 50), endPos=Global (800, 500)}) ]
+            [ ({id=4, startPos= Offset (1, 10, 40), endPos=Offset (2, 50, 5), title="a"})
+            , ({id=5, startPos=Global (190, 50), endPos=Global (800, 500), title="b"})]
         , debugMsg = ""
         , dragElement=Nothing
         , dragOffsetX=0
@@ -175,21 +174,49 @@ removeElement model id =
 
 
 
-lookupZipCode : Task Http.Error (List String)
+lookupZipCode : Task Http.Error (List FcShape, List FcArrow)
 lookupZipCode =
     let s = Http.get places ("http://localhost/elm/thousandDangers/src/db.php")
     in 
-        Debug.log "s ist " s
+        s
 
 
-places : Json.Decoder (List String)
+places : Json.Decoder (List FcShape, List FcArrow)
 places =
-    let place =
-        Json.object2 (\city state -> city ++ ", " ++ state)
-            ("place" := Json.string)
-            ("state" := Json.string)
+    let toFcShape =
+        Json.object6 (\id  x y shapeType title text -> {id=id, x=x, y=y, shapeType=shapeType, title=title, text=text})
+            ("id" := Json.int)
+            ("x" := Json.float)
+            ("y" := Json.float)
+            ("shapeType" := (Json.string |> (Json.object1 readShapeType)))
+            ("title" := Json.string)
+            ("text" := Json.string)
+        toFcArrow =
+            Json.object7 (\source_id destination_id source_offset_x source_offset_y destination_offset_x destination_offset_y title ->
+                { id=789
+                , startPos=Offset (source_id, source_offset_x, source_offset_y)
+                , endPos=Offset (destination_id, destination_offset_x, destination_offset_y)
+                , title=title})
+                ("source_id" := Json.int)
+                ("destination_id" := Json.int)
+                ("source_offset_x" := Json.float)
+                ("source_offset_y" := Json.float)
+                ("destination_offset_x" := Json.float)
+                ("destination_offset_y" := Json.float)
+                ("title" := Json.string)
     in
-        "places" := Json.list place
+        Json.object2 (,)
+            ("fcShapes" := Json.list toFcShape)
+            ("fcArrows" := Json.list toFcArrow)
+
+readShapeType : String -> ShapeType
+readShapeType s =
+    case s of
+        "Start" -> Start
+        "End" -> End
+        "Action" -> Action
+        "Condition" -> Condition
+        _ -> End
 
 
 
@@ -204,7 +231,9 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
         DownMsg { areaType, id} ->
-            {model | dragElement=(Just {areaType=areaType, id=id}), selectedElement=id, currentLine=Just (Offset (id, 0, 0), Offset (id, 0, 0)) } ! []
+            case areaType of
+                Inner -> {model | dragElement=(Just {areaType=areaType, id=id}), selectedElement=id, currentLine=Nothing } ! []
+                Outer -> {model | dragElement=(Just {areaType=areaType, id=id}), selectedElement=id, currentLine=Just (Offset (id, 0, 0), Offset (id, 0, 0)) } ! []
         MouseDown pos->
             let id = 
                     case model.dragElement of
@@ -231,13 +260,14 @@ update msg model =
             case code of 
                 97 -> {model | debugMsg = "a pressed", fcShapes = model.fcShapes ++ [ (createStartElement (findFreeId model) 400.0 400.0)]} ! []
                 98 ->
-                    let x = lookupZipCode |> perform (\a -> HttpFailure <| toString a) (\a -> HttpSuccess <| toString a)
+                    let x = lookupZipCode |> perform (\a -> HttpFailure ([],[])) (\a -> HttpSuccess a)
                     in
+                        --model ! []
                         {model | debugMsg="b" ++ toString x} ! [x]
                 127 -> (removeElement model model.selectedElement) ! []
                 _ -> model ! []
-        HttpSuccess s -> {model | debugMsg="great success"++s} ! []
-        HttpFailure s -> {model | debugMsg="unfortunatelyfailure"++s} ! []
+        HttpSuccess s -> {model | fcShapes=(fst s), fcArrows=(snd s)} ! []
+        HttpFailure s -> model ! []
         UpMsg { areaType, id} ->
             {model |dragElement=Nothing, currentLine=Maybe.map (\l -> (fst l, Offset (id, 0, 0))) model.currentLine } ! []
         MouseUp pos ->
@@ -253,7 +283,7 @@ update msg model =
                                             Nothing -> (0.0, 0.0)
                                             Just el -> (toFloat pos.x - el.x, toFloat pos.y - el.y)
                                 in
-                                    if (isSameElement a.startPos a.endPos) then [] else [{id= a.id, startPos=a.startPos, endPos=Offset (id, offsetX, offsetY)}]
+                                    if (isSameElement a.startPos a.endPos) then [] else [{id= a.id, startPos=a.startPos, endPos=Offset (id, offsetX, offsetY), title="No title at all"}]
                             _ -> []
             in
                 {model | dragElement=Nothing, fcArrows=(h++model.fcArrows), currentLine=Nothing } ! []
@@ -318,12 +348,12 @@ view model =
     let cur = 
         case model.currentLine of
             Nothing -> []
-            Just (startPos, endPos)-> [fcArrowToSvg model {id=-1, startPos=startPos, endPos=endPos}]
+            Just (startPos, endPos)-> [fcArrowToSvg model {id=-1, startPos=startPos, endPos=endPos, title="no title"}]
     in
     Debug.log model.debugMsg
-    svg [ viewBox "0 0 1500 1500", width "1500",  pointerEvents "none"]
+    svg [ viewBox "0 0 8500 11500", width "8500", height "11500",  pointerEvents "none"]
         (([defs []
-            [marker [id "arrowHead", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "-2", refY "0", orient "auto"]
+            [marker [id "arrowHead", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto"]
                     [polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]]
         ]) ++
         (List.map (fcShapeToSvg model) model.fcShapes ++
@@ -449,64 +479,32 @@ fcShapeToSvg model fcShape =
                 innerStartX = fcShape.x + outerPadding -- - smallAmount
                 innerStartY = fcShape.y + outerPadding
             in
-                g [pointerEvents "all"] [
+                g [pointerEvents "all"
+                         , onMouseUp (UpMsg {areaType=Outer, id=fcShape.id})][
                     polygon[ onMouseDown (DownMsg {areaType=Outer, id=fcShape.id})
                          , points ((toString <| fcShape.x) ++ "," ++ (toString <| fcShape.y + outerShapeHeight/2) ++ " "
                                 ++ (toString (fcShape.x + outerShapeWidth/2)) ++ "," ++ (toString fcShape.y) ++ " "
                                 ++ (toString (fcShape.x + outerShapeWidth)) ++ "," ++ (toString (fcShape.y + outerShapeHeight/2)) ++ " "
                                 ++ (toString <| fcShape.x + outerShapeWidth / 2) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " ")
 
-                         , stroke "red"
+                         , stroke strokeColor
                          , strokeDasharray "10,10"
-                         , fill "#FFF9CE" ] [],
+                         , fill outerColor ] [],
                     polygon [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
                          , points ((toString <| innerStartX) ++ "," ++ (toString <| innerStartY + innerShapeHeight/2) ++ " "
                                 ++ (toString (innerStartX + innerShapeWidth/2)) ++ "," ++ (toString <| innerStartY) ++ " "
                                 ++ (toString (innerStartX + innerShapeWidth)) ++ "," ++ (toString (innerStartY + innerShapeHeight/2)) ++ " "
                                 ++ (toString <| innerStartX + innerShapeWidth / 2) ++ "," ++ (toString (innerStartY + innerShapeHeight)) ++ " ")
 
-                         , stroke "blue"
-                         , fill "#FFF9CE" ] [],
+                         , fill innerColor] [],
                     text' [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
                           , fontFamily myFontFamily
                           ,  fontSize (toString myFontSize)
                           ,  Svg.Attributes.cursor "default"
+                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                           , x (toString (fcShape.x + outerPadding + innerPadding))
                           , y (toString (fcShape.y+outerPadding + innerPadding + textHeight / 2 + myFontSize / 3))
-                          , fill "red" ] [Svg.text fcShape.title]]
-        Output ->
-            let (textWidth, textHeight) = getTextDimension fcShape.title "Courier" 20
-                innerShapeWidth = textWidth + innerPadding + innerPadding
-                innerShapeHeight = textHeight + innerPadding + innerPadding
-                outerShapeWidth = innerShapeWidth + outerPadding + outerPadding
-                outerShapeHeight = innerShapeHeight + outerPadding + outerPadding
-                innerStartX = fcShape.x + innerPadding -- - smallAmount
-                innerStartY = fcShape.y + innerPadding
-            in
-                g [ pointerEvents "all"] [
-                    polygon[ onMouseDown (DownMsg {areaType=Outer, id=fcShape.id})
-                         , points ((toString <| fcShape.x) ++ "," ++ (toString fcShape.y) ++ " "
-                                ++ (toString (fcShape.x + outerShapeWidth)) ++ "," ++ (toString fcShape.y) ++ " "
-                                ++ (toString (fcShape.x - paralleloGrammShift + outerShapeWidth)) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " "
-                                ++ (toString <| fcShape.x - paralleloGrammShift) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " ")
-
-                         , stroke "red"
-                         , strokeDasharray "10,10"
-                         , fill "#FFF9CE" ] [],
-                    polygon[ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
-                         , points ((toString <| fcShape.x ) ++ "," ++ (toString fcShape.y) ++ " "
-                                ++ (toString (fcShape.x + outerShapeWidth)) ++ "," ++ (toString fcShape.y) ++ " "
-                                ++ (toString (fcShape.x - paralleloGrammShift + outerShapeWidth)) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " "
-                                ++ (toString <| fcShape.x - paralleloGrammShift) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " ")
-                         , stroke "blue"
-                         , fill "#FFF9CE" ] [],
-                    text' [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
-                          , fontFamily myFontFamily
-                          ,  fontSize (toString myFontSize)
-                          ,  Svg.Attributes.cursor "default"
-                          , x (toString (fcShape.x + outerPadding + innerPadding))
-                          , y (toString (fcShape.y+outerPadding + innerPadding + textHeight / 2 + myFontSize / 3))
-                          , fill "red" ] [Svg.text fcShape.title]]
+                          , fill textColor] [Svg.text fcShape.title]]
 
 
 getTextDimension : String -> String -> Int -> (Float,Float)
