@@ -1,36 +1,28 @@
 <?php
+    session_start();
+    $_SESSION['user_id'] = 1;
+    $_SESSION['1000dangersbook_name'] = '1000 Gefahren';
     ini_set('display_startup_errors', 1);
     ini_set('display_errors', 1);
     error_reporting(-1);
-    $_SESSION['user_id'] = 1;
-    $_SESSION['1000dangersbook_name'] = '1000 Gefahren';
     $conn = new PDO('mysql:host=localhost;dbname=1998294_db', 'root', '1234');
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     //$conn = new PDO('mysql:host=fdb6.biz.nf;dbname=1998294_db', '1998294_db', 'Nuernberg12');
     header('Access-Control-Allow-Origin: http://localhost:8000');
-    /*
-    echo '
-        {
-            "fcShapes": [
-                            { "id":"1"
-                            , "x":50
-                            , "y":70
-                            ,  "shapeType":"Start"
-                            , "title":"Starttitle"
-                            , "text":"text"},
-                            { "id":2
-                            , "x":450
-                            , "y":70
-                            ,  "shapeType":"Action"
-                            , "title":"Meine Action"
-                            , "text":"text"}
-                        ]
-        }';
-     //*/
-    $papElements = loadPapElements();
-    $papConnections = loadPapConnections();
-    $re = array('fcShapes' => $papElements, 'fcArrows' => $papConnections);
-    echo json_encode($re, JSON_NUMERIC_CHECK);
+
+    if(isset($_GET['action']) && $_GET['action'] == 'load')
+    {
+        $papElements = loadPapElements();
+        $papConnections = loadPapConnections();
+        $re = array('fcShapes' => $papElements, 'fcArrows' => $papConnections);
+        echo json_encode($re, JSON_NUMERIC_CHECK);
+    }
+    else if(isset($_GET['action']) && $_GET['action'] == 'save')
+    {
+        $pap = json_decode($_GET['flowchart'], true);
+        savePapElements($pap['shapes']);
+        savePapConnections($pap['arrows']);
+    }
 
 
 
@@ -62,7 +54,7 @@ function loadPapConnections()
 {
     global $conn;
     $statement = $conn->prepare('
-        select papconnection.source_id, papconnection.destination_id, papconnection.source_offset_x, papconnection.source_offset_y, papconnection.destination_offset_x, papconnection.destination_offset_y, papconnection.title
+        select papconnection.id, papconnection.source_id, papconnection.destination_id, papconnection.source_offset_x, papconnection.source_offset_y, papconnection.destination_offset_x, papconnection.destination_offset_y, papconnection.title
         from papconnection
         join 1000dangersbook
           on papconnection.1000dangersbook_id = 1000dangersbook.id
@@ -100,7 +92,7 @@ function savePapElements($papElements)
         $statement->bindParam(':1000dangersbook_name', $_SESSION['1000dangersbook_name']);
         $statement->bindParam(':x', $papElement['x']);
         $statement->bindParam(':y', $papElement['y']);
-        $statement->bindParam(':type', $papElement['type']);
+        $statement->bindParam(':type', $papElement['shapeType']);
         $statement->bindParam(':title', $papElement['title']);
         $statement->bindParam(':text', $papElement['text']);
         $result = $statement->execute();
@@ -118,8 +110,9 @@ function savePapConnections($papConnections)
     {
         $statement = $conn->prepare('
             insert into papconnection
-              (source_id, destination_id, 1000dangersbook_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title)
-            values (:source_id, :destination_id, (select max(1000dangersbook.id) from 1000dangersbook where 1000dangersbook.name = :1000dangersbook_name), :source_offset_x, :source_offset_y, :destination_offset_x, :destination_offset_y, :title)');
+              (id, source_id, destination_id, 1000dangersbook_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title)
+            values (:id, :source_id, :destination_id, (select max(1000dangersbook.id) from 1000dangersbook where 1000dangersbook.name = :1000dangersbook_name), :source_offset_x, :source_offset_y, :destination_offset_x, :destination_offset_y, :title)');
+        $statement->bindParam(':id', $papConnection['id']);
         $statement->bindParam(':source_id', $papConnection['source_id']);
         $statement->bindParam(':destination_id', $papConnection['destination_id']);
         $statement->bindParam(':1000dangersbook_name', $_SESSION['1000dangersbook_name']);

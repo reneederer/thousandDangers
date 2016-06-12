@@ -11,7 +11,8 @@ import Mouse
 import Keyboard
 import VirtualDom exposing (onWithOptions)
 import Json.Encode exposing (..)
-import Json.Decode as Json exposing(..)
+import Json.Decode as Json
+import Json.Decode exposing ((:=))
 import String exposing (length)
 import Char exposing (toCode, fromCode)
 import Maybe exposing (withDefault)
@@ -69,7 +70,7 @@ createStartElement id x y =
         , x = x
         , y = y
         , text = "Start"
-        , title = "Start"
+        , title = toString id
         }
 
 createEndElement : Id -> Float -> Float -> FcShape
@@ -78,7 +79,7 @@ createEndElement id x y =
         , shapeType = End
         , x = x
         , y = y
-        , text = "Ende"
+        , text = toString id
         , title = "Ende"
         }
 
@@ -88,7 +89,7 @@ createConditionElement id x y =
         , shapeType = Condition
         , x = x
         , y = y
-        , text = "Condition"
+        , text = toString id
         , title = "Mein Titel"
         }
 
@@ -112,7 +113,7 @@ type Msg =
     | DownMsg ShapeArea
     | UpMsg ShapeArea
     | HttpSuccess (List FcShape, List FcArrow)
-    | HttpFailure (List FcShape, List FcArrow)
+    | HttpFailure String
 
 -- MODEL
 
@@ -132,12 +133,12 @@ init : (Model, Cmd Msg)
 init =
     ({
         fcShapes =
-            [ ({id=1, shapeType=Start, x=40,y=90,text="",title="Start"})
-            , ({id=2, shapeType=Action, x=40,y=490,text="",title="Action"})
-            , ({id=3, shapeType=End, x=150,y=290,text="",title="End"})]
+            [ ({id=1, shapeType=Start, x=40,y=90,text="",title="1"})
+            , ({id=2, shapeType=Action, x=40,y=490,text="",title="tre2"})]
+            --, ({id=3, shapeType=End, x=150,y=290,text="",title="j23j"})]
         , fcArrows =
-            [ ({id=4, startPos= Offset (1, 10, 40), endPos=Offset (2, 50, 5), title="a"})
-            , ({id=5, startPos=Global (190, 50), endPos=Global (800, 500), title="b"})]
+            [ ({id=1, startPos= Offset (1, 10, 40), endPos=Offset (2, 50, 5), title="1"})
+            , ({id=2, startPos=Global (190, 50), endPos=Global (800, 500), title="ijs2"})]
         , debugMsg = ""
         , dragElement=Nothing
         , dragOffsetX=0
@@ -156,12 +157,10 @@ getElementWithId model id =
 
     
 
-findFreeId : Model -> Id
-findFreeId model = 
-    let minShapes = List.foldl (\el state -> if el.id >= state then el.id + 1 else state) 1 model.fcShapes
-        minArrows = List.foldl (\el state -> if el.id >= state then el.id + 1 else state) minShapes model.fcArrows
-    in
-        minArrows
+findFreeId : List {a | id:Id} -> Id
+findFreeId l = 
+    List.foldl (\el state -> if el.id >= state then el.id + 1 else state) 1 l
+
 
 removeElement : Model -> Id -> Model
 removeElement model id =
@@ -174,36 +173,35 @@ removeElement model id =
 
 
 
-lookupZipCode : Task Http.Error (List FcShape, List FcArrow)
-lookupZipCode =
-    let s = Http.get places ("http://localhost/elm/thousandDangers/src/db.php")
-    in 
-        s
+loadElements : Task Http.Error (List FcShape, List FcArrow)
+loadElements =
+    Http.get decodeElements ("http://localhost/elm/thousandDangers/src/db.php?action=load")
 
 
-places : Json.Decoder (List FcShape, List FcArrow)
-places =
+decodeElements : Json.Decoder (List FcShape, List FcArrow)
+decodeElements =
     let toFcShape =
         Json.object6 (\id  x y shapeType title text -> {id=id, x=x, y=y, shapeType=shapeType, title=title, text=text})
             ("id" := Json.int)
             ("x" := Json.float)
             ("y" := Json.float)
             ("shapeType" := (Json.string |> (Json.object1 readShapeType)))
-            ("title" := Json.string)
-            ("text" := Json.string)
+            ("title" := Json.oneOf [Json.string, Json.object1 (\x -> toString x) Json.float ] )
+            ("text" := Json.oneOf [Json.string, Json.object1 (\x -> toString x) Json.float ] )
         toFcArrow =
-            Json.object7 (\source_id destination_id source_offset_x source_offset_y destination_offset_x destination_offset_y title ->
-                { id=789
+            Json.object8 (\id source_id destination_id source_offset_x source_offset_y destination_offset_x destination_offset_y title ->
+                { id=id
                 , startPos=Offset (source_id, source_offset_x, source_offset_y)
                 , endPos=Offset (destination_id, destination_offset_x, destination_offset_y)
                 , title=title})
+                ("id" := Json.int)
                 ("source_id" := Json.int)
                 ("destination_id" := Json.int)
                 ("source_offset_x" := Json.float)
                 ("source_offset_y" := Json.float)
                 ("destination_offset_x" := Json.float)
                 ("destination_offset_y" := Json.float)
-                ("title" := Json.string)
+                ("title" := Json.oneOf [Json.string, Json.object1 (\x -> toString x) Json.float ] )
     in
         Json.object2 (,)
             ("fcShapes" := Json.list toFcShape)
@@ -218,6 +216,41 @@ readShapeType s =
         "Condition" -> Condition
         _ -> End
 
+
+saveElements : Model -> Task Http.Error String
+saveElements model = 
+    let toShapeObject s = 
+            object [ ("id", Json.Encode.int s.id)
+               , ("shapeType", Json.Encode.string (toString s.shapeType))
+               , ("x", Json.Encode.float s.x)
+               , ("y", Json.Encode.float s.y)
+               , ("text", Json.Encode.string (s.text))
+              , ("title", Json.Encode.string (s.title)) ]
+
+        toArrowObject a = 
+            let (source_id, source_offset_x, source_offset_y) = 
+                case a.startPos of
+                    Offset (sid, sx, sy) -> (sid, sx, sy)
+                    Global (sx, sy) -> (0, sx, sy)
+                (destination_id, destination_offset_x, destination_offset_y) = 
+                case a.endPos of
+                    Offset (eid, ex, ey) -> (eid, ex, ey)
+                    Global (ex, ey) -> (0, ex, ey)
+            in
+                object [ ("id", Json.Encode.int a.id)
+                       , ("source_id", Json.Encode.int source_id)
+                       , ("destination_id", Json.Encode.int destination_id)
+                       , ("source_offset_x", Json.Encode.float source_offset_x)
+                       , ("source_offset_y", Json.Encode.float source_offset_y)
+                       , ("destination_offset_x", Json.Encode.float destination_offset_x)
+                       , ("destination_offset_y", Json.Encode.float destination_offset_y)
+                       , ("title", Json.Encode.string (toString a.id)) ]
+        json = encode 4 (object
+            [ ("shapes", Json.Encode.list (List.map toShapeObject model.fcShapes))
+            , ("arrows", Json.Encode.list (List.map toArrowObject model.fcArrows))])
+
+    in
+        Http.getString ("http://localhost/elm/thousandDangers/src/db.php?action=save&flowchart=" ++ json)
 
 
 
@@ -258,20 +291,24 @@ update msg model =
                         model ! []
         KeyMsg code ->
             case code of 
-                97 -> {model | debugMsg = "a pressed", fcShapes = model.fcShapes ++ [ (createStartElement (findFreeId model) 400.0 400.0)]} ! []
+                97 -> {model | debugMsg = "a pressed", fcShapes = model.fcShapes ++ [ (createStartElement (findFreeId model.fcShapes) 400.0 400.0)]} ! []
                 98 ->
-                    let x = lookupZipCode |> perform (\a -> HttpFailure ([],[])) (\a -> HttpSuccess a)
+                    let x = loadElements |> perform (\a -> HttpFailure (toString a)) (\a -> HttpSuccess a)
                     in
-                        --model ! []
-                        {model | debugMsg="b" ++ toString x} ! [x]
+                        case x of
+                            _ -> {model | debugMsg="b" ++ toString x} ! [x]
+                99 ->
+                    let x = saveElements model |> perform (\a -> HttpFailure (toString a)) (\a -> KeyMsg 108)
+                    in
+                        model ! [x]
                 127 -> (removeElement model model.selectedElement) ! []
                 _ -> model ! []
         HttpSuccess s -> {model | fcShapes=(fst s), fcArrows=(snd s)} ! []
-        HttpFailure s -> model ! []
+        HttpFailure s -> { model | debugMsg="HttpFailure " ++ s } ! []
         UpMsg { areaType, id} ->
             {model |dragElement=Nothing, currentLine=Maybe.map (\l -> (fst l, Offset (id, 0, 0))) model.currentLine } ! []
         MouseUp pos ->
-            let arrow = Maybe.map (\l -> { id=findFreeId model, startPos=(fst l), endPos=(snd l) }) model.currentLine
+            let arrow = Maybe.map (\l -> { id=findFreeId model.fcShapes, startPos=(fst l), endPos=(snd l) }) model.currentLine
                 h = case arrow of 
                     Nothing -> []
                     Just a ->
@@ -282,8 +319,9 @@ update msg model =
                                         case element of
                                             Nothing -> (0.0, 0.0)
                                             Just el -> (toFloat pos.x - el.x, toFloat pos.y - el.y)
+                                    elid = findFreeId model.fcArrows
                                 in
-                                    if (isSameElement a.startPos a.endPos) then [] else [{id= a.id, startPos=a.startPos, endPos=Offset (id, offsetX, offsetY), title="No title at all"}]
+                                    if (isSameElement a.startPos a.endPos) then [] else [{id=elid, startPos=a.startPos, endPos=Offset (id, offsetX, offsetY), title=toString elid}]
                             _ -> []
             in
                 {model | dragElement=Nothing, fcArrows=(h++model.fcArrows), currentLine=Nothing } ! []
@@ -354,7 +392,7 @@ view model =
     svg [ viewBox "0 0 8500 11500", width "8500", height "11500",  pointerEvents "none"]
         (([defs []
             [marker [id "arrowHead", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto"]
-                    [polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]]
+                    [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]]
         ]) ++
         (List.map (fcShapeToSvg model) model.fcShapes ++
          List.map (fcArrowToSvg model) model.fcArrows ++
@@ -363,7 +401,7 @@ view model =
 
 
 fcArrowToSvg : Model -> FcArrow -> Svg.Svg Msg
-fcArrowToSvg model {id, startPos, endPos} = 
+fcArrowToSvg model {id, startPos, endPos, title} = 
     let (startX, startY) = 
         case startPos of
             Global (x, y) -> (x, y)
@@ -383,7 +421,8 @@ fcArrowToSvg model {id, startPos, endPos} =
                             Nothing -> (0, 0)
                             Just e -> (x + e.x, y + e.y)
     in
-        line [x1 (toString <| startX), y1 (toString <| startY), x2 (toString <| endX), y2 (toString <| endY), markerEnd "url(#arrowHead)", Svg.Attributes.style "stroke:rgb(255,0,0);stroke-width:2"] []
+        g [] [ line [x1 (toString startX), y1 (toString startY), x2 (toString endX), y2 (toString <| endY), markerEnd "url(#arrowHead)", Svg.Attributes.style "stroke:rgb(255,0,0);stroke-width:2"] []
+             , text' [ x (toString startX), y (toString startY)] [Svg.text title]]
 
 
 fcShapeToSvg : Model -> FcShape -> Svg.Svg Msg
