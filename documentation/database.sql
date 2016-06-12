@@ -18,14 +18,15 @@ create table fc_arrow(id int, book_id int, source_id int null, destination_id in
 insert into user(id, name, password) values(1, "rene", "1234");
 insert into book(id, user_id, name, creation_date) values(1, 1, "1000 Gefahren", now());
 insert into fc_shape_type(id, name) values(1, "Start"), (2, "End"), (3, "Action"), (4, "Condition");
-insert into fc_shape(id, book_id, fc_shape_type_id, x, y, title, text) values(1, 1, 1, 517, 6, "Start", "");
-insert into fc_shape(id, book_id, fc_shape_type_id, x, y, title, text) values(2, 1, 2, 535, 525, "Ende", "");
-insert into fc_shape(id, book_id, fc_shape_type_id, x, y, title, text) values(3, 1, 3, 502, 159, "Insel gestrandet", "Du hast Schiffbruch erlitten. Nachdem du dich auf eine einsame Insel gerettet hast, begegnen dir 5 Kannibalen.");
-insert into fc_shape(id, book_id, fc_shape_type_id, x, y, title, text) values(4, 1, 4, 797, 85, "Kannibalen kennenlernen?", "Moechtest du dich erstmal mit den Kannibalen anfreunden?");
-insert into fc_shape(id, book_id, fc_shape_type_id, x, y, title, text) values(5, 1, 3, 1015, 333, "Vor Kannibalen fliehen", "Du hast dich dazu entschieden, vor, vor den Kannibalen zu fliehen. Auf der Flucht stolperst du und verblutest qualvoll.");
-insert into fc_shape(id, book_id, fc_shape_type_id, x, y, title, text) values(6, 1, 3, 586, 398, "Mit Kannibalen anfreunden", "Du lernst die Kannibalen kennen. Sie sind viel netter, als man sonst so liest. Sie organisieren fuer dich die Heimreise. 6 Wochen spaeter bist du zu Hause.");
-insert into fc_arrow(id, book_id, source_id, destination_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title) values(1, 1, null, 2, 10, 20, 20,40, "ja");
-insert into fc_arrow(id, book_id, source_id, destination_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title) values(1, 1, 1, 2, 10, 20, 20,40, "ja");
+insert into fc_shape(id, book_id, fc_shape_type_id, x, y, title, text) values
+    (1, 1, 1, 517, 6, "Start", ""),
+    (2, 1, 2, 535, 525, "Ende", ""),
+    (3, 1, 3, 502, 159, "Insel gestrandet", "Du hast Schiffbruch erlitten. Nachdem du dich auf eine einsame Insel gerettet hast, begegnen dir 5 Kannibalen."),
+    (4, 1, 4, 797, 85, "Kannibalen kennenlernen?", "Moechtest du dich erstmal mit den Kannibalen anfreunden?"),
+    (5, 1, 3, 1015, 333, "Vor Kannibalen fliehen", "Du hast dich dazu entschieden, vor, vor den Kannibalen zu fliehen. Auf der Flucht stolperst du und verblutest qualvoll."),
+    (6, 1, 3, 586, 398, "Mit Kannibalen anfreunden", "Du lernst die Kannibalen kennen. Sie sind viel netter, als man sonst so liest. Sie organisieren fuer dich die Heimreise. 6 Wochen spaeter bist du zu Hause.");
+insert into fc_arrow(id, book_id, source_id, destination_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title) values(1, 1, 1, null, 40, 50, 70,80, "ja");
+insert into fc_arrow(id, book_id, source_id, destination_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title) values(2, 1, 1, 3, 10, 20, 20,40, "nein");
 
 
 
