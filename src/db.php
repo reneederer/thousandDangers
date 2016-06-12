@@ -1,126 +1,125 @@
 <?php
+    header('Access-Control-Allow-Origin: *');
     session_start();
     $_SESSION['user_id'] = 1;
-    $_SESSION['1000dangersbook_name'] = '1000 Gefahren';
+    $_SESSION['book_name'] = '1000 Gefahren';
     ini_set('display_startup_errors', 1);
     ini_set('display_errors', 1);
     error_reporting(-1);
     $conn = new PDO('mysql:host=localhost;dbname=1998294_db', 'root', '1234');
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     //$conn = new PDO('mysql:host=fdb6.biz.nf;dbname=1998294_db', '1998294_db', 'Nuernberg12');
-    header('Access-Control-Allow-Origin: http://localhost:8000');
 
-    if(isset($_GET['action']) && $_GET['action'] == 'load')
+    if(isset($_POST['action']) && $_POST['action'] == 'load')
     {
-        $papElements = loadPapElements();
-        $papConnections = loadPapConnections();
-        $re = array('fcShapes' => $papElements, 'fcArrows' => $papConnections);
+        $fc_shapes = load_fc_shapes();
+        $fc_arrows = load_fc_arrows();
+        $re = array('fcShapes' => $fc_shapes, 'fcArrows' => $fc_arrows);
         echo json_encode($re, JSON_NUMERIC_CHECK);
     }
-    else if(isset($_GET['action']) && $_GET['action'] == 'save')
+    else if(isset($_POST['action']) && $_POST['action'] == 'save')
     {
-        $pap = json_decode($_GET['flowchart'], true);
-        savePapElements($pap['shapes']);
-        savePapConnections($pap['arrows']);
+        $pap = json_decode($_POST['flowchart'], true);
+        save_fc_shapes($pap['shapes']);
+        save_fc_arrows($pap['arrows']);
     }
 
 
 
 
 
-function loadPapElements()
+function load_fc_shapes()
 {
     global $conn;
     $statement = $conn->prepare('
-        select papelement.id as id, x, y, paptype.name as shapeType, title, text
-        from papelement
-        join 1000dangersbook
-          on papelement.1000dangersbook_id = 1000dangersbook.id
+        select fc_shape.id as id, x, y, fc_shape_type.name as shapeType, title, text
+        from fc_shape
+        join book
+          on fc_shape.book_id = book.id
         join user
-           on 1000dangersbook.user_id = :user_id
-        join paptype
-          on papelement.paptype_id = paptype.id
+           on book.user_id = :user_id
+        join fc_shape_type
+          on fc_shape.fc_shape_type_id = fc_shape_type.id
         where
-          1000dangersbook_id = (select max(1000dangersbook.id) from 1000dangersbook where 1000dangersbook.name = :1000dangersbook_name)');
+          book_id = (select max(book.id) from book where book.name = :book_name)');
     $statement->bindParam(':user_id', $_SESSION['user_id']);
-    $statement->bindParam(':1000dangersbook_name', $_SESSION['1000dangersbook_name']);
+    $statement->bindParam(':book_name', $_SESSION['book_name']);
     $result = $statement->execute();
     $result = $statement->setFetchMode(PDO::FETCH_ASSOC); 
     $rows = $statement->fetchAll();
     return $rows;
 }
 
-function loadPapConnections()
+function load_fc_arrows()
 {
     global $conn;
     $statement = $conn->prepare('
-        select papconnection.id, papconnection.source_id, papconnection.destination_id, papconnection.source_offset_x, papconnection.source_offset_y, papconnection.destination_offset_x, papconnection.destination_offset_y, papconnection.title
-        from papconnection
-        join 1000dangersbook
-          on papconnection.1000dangersbook_id = 1000dangersbook.id
+        select fc_arrow.id, fc_arrow.source_id, fc_arrow.destination_id, fc_arrow.source_offset_x, fc_arrow.source_offset_y, fc_arrow.destination_offset_x, fc_arrow.destination_offset_y, fc_arrow.title
+        from fc_arrow
+        join book
+          on fc_arrow.book_id = book.id
         join user
-          on 1000dangersbook.user_id = :user_id
+          on book.user_id = :user_id
         where
-          papconnection.1000dangersbook_id = (select max(1000dangersbook.id) from 1000dangersbook) 
-          and 1000dangersbook.name = :1000dangersbook_name');
+          fc_arrow.book_id = (select max(book.id) from book) 
+          and book.name = :book_name');
     $statement->bindParam(':user_id', $_SESSION['user_id']);
-    $statement->bindParam(':1000dangersbook_name', $_SESSION['1000dangersbook_name']);
+    $statement->bindParam(':book_name', $_SESSION['book_name']);
     $result = $statement->execute();
     $result = $statement->setFetchMode(PDO::FETCH_ASSOC); 
     $rows = $statement->fetchAll();
     return $rows;
 }
-function savePapElements($papElements)
+function save_fc_shapes($fc_shapes)
 {
     global $conn;
     $statement = $conn->prepare('
-        insert into 1000dangersbook(user_id, name, creationdate) values(:user_id, :1000dangersbook_name, now())');
-    $statement->bindParam(':1000dangersbook_name', $_SESSION['1000dangersbook_name']);
+        insert into book(user_id, name, creation_date) values( :user_id, :book_name, now())');
+    $statement->bindParam(':book_name', $_SESSION['book_name']);
     $statement->bindParam(':user_id', $_SESSION['user_id']);
     $statement->execute();
-    if(is_null($papElements))
+    if(is_null($fc_shapes))
     {
         return;
     }
-    foreach($papElements as $papElement)
+    foreach($fc_shapes as $fc_shape)
     {
         $statement = $conn->prepare('
-            insert into papelement
-              (id, 1000dangersbook_id, x, y, paptype_id, title, text)
-            values (:id, (select max(1000dangersbook.id) from 1000dangersbook where 1000dangersbook.name = :1000dangersbook_name), :x, :y, (select id from paptype where paptype.name = :type), :title, :text)');
-        $statement->bindParam(':id', $papElement['id']);
-        $statement->bindParam(':1000dangersbook_name', $_SESSION['1000dangersbook_name']);
-        $statement->bindParam(':x', $papElement['x']);
-        $statement->bindParam(':y', $papElement['y']);
-        $statement->bindParam(':type', $papElement['shapeType']);
-        $statement->bindParam(':title', $papElement['title']);
-        $statement->bindParam(':text', $papElement['text']);
+            insert into fc_shape
+              (id, book_id, x, y, fc_shape_type_id, title, text)
+            values (:id, (select max(book.id) from book where book.name = :book_name), :x, :y, (select id from fc_shape_type where fc_shape_type.name = :type), :title, :text)');
+        $statement->bindParam(':id', $fc_shape['id']);
+        $statement->bindParam(':book_name', $_SESSION['book_name']);
+        $statement->bindParam(':x', $fc_shape['x']);
+        $statement->bindParam(':y', $fc_shape['y']);
+        $statement->bindParam(':type', $fc_shape['shapeType']);
+        $statement->bindParam(':title', $fc_shape['title']);
+        $statement->bindParam(':text', $fc_shape['text']);
         $result = $statement->execute();
     }
 }
-function savePapConnections($papConnections)
+function save_fc_arrows($fc_arrows)
 {
-    //TODO  savePapElements() muss immer vorher aufgerufen werden!!
     global $conn;
-    if(is_null($papConnections))
+    if(is_null($fc_arrows))
     {
         return;
     }
-    foreach($papConnections as $papConnection)
+    foreach($fc_arrows as $fc_arrow)
     {
         $statement = $conn->prepare('
-            insert into papconnection
-              (id, source_id, destination_id, 1000dangersbook_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title)
-            values (:id, :source_id, :destination_id, (select max(1000dangersbook.id) from 1000dangersbook where 1000dangersbook.name = :1000dangersbook_name), :source_offset_x, :source_offset_y, :destination_offset_x, :destination_offset_y, :title)');
-        $statement->bindParam(':id', $papConnection['id']);
-        $statement->bindParam(':source_id', $papConnection['source_id']);
-        $statement->bindParam(':destination_id', $papConnection['destination_id']);
-        $statement->bindParam(':1000dangersbook_name', $_SESSION['1000dangersbook_name']);
-        $statement->bindParam(':source_offset_x', $papConnection['source_offset_x']);
-        $statement->bindParam(':source_offset_y', $papConnection['source_offset_y']);
-        $statement->bindParam(':destination_offset_x', $papConnection['destination_offset_x']);
-        $statement->bindParam(':destination_offset_y', $papConnection['destination_offset_y']);
-        $statement->bindParam(':title', $papConnection['title']);
+            insert into fc_arrow
+              (id, source_id, destination_id, book_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title)
+            values (:id, :source_id, :destination_id, (select max(book.id) from book where book.name = :book_name), :source_offset_x, :source_offset_y, :destination_offset_x, :destination_offset_y, :title)');
+        $statement->bindParam(':id', $fc_arrow['id']);
+        $statement->bindParam(':source_id', $fc_arrow['source_id']);
+        $statement->bindParam(':destination_id', $fc_arrow['destination_id']);
+        $statement->bindParam(':book_name', $_SESSION['book_name']);
+        $statement->bindParam(':source_offset_x', $fc_arrow['source_offset_x']);
+        $statement->bindParam(':source_offset_y', $fc_arrow['source_offset_y']);
+        $statement->bindParam(':destination_offset_x', $fc_arrow['destination_offset_x']);
+        $statement->bindParam(':destination_offset_y', $fc_arrow['destination_offset_y']);
+        $statement->bindParam(':title', $fc_arrow['title']);
         $result = $statement->execute();
     }
 }
@@ -145,11 +144,11 @@ function getBooks($user_id)
 {
     global $conn;
     $statement = $conn->prepare('
-        select 1000dangersbook.name
-        from 1000dangersbook
-        join user on 1000dangersbook.user_id = user.id
+        select book.name
+        from book
+        join user on book.user_id = user.id
         where user.id = :user_id
-        group by 1000dangersbook.name');
+        group by book.name');
     $statement->bindParam(':user_id', $user_id);
     $result = $statement->execute();
     $result = $statement->setFetchMode(PDO::FETCH_ASSOC); 
@@ -160,14 +159,14 @@ function doesBookExist($user_id, $bookName)
 {
     global $conn;
     $statement = $conn->prepare('
-        select 1000dangersbook.id
-        from 1000dangersbook
+        select book.id
+        from book
         join user
-          on 1000dangersbook.user_id = user.id
-        where 1000dangersbook.name = :1000dangersbook_name
+          on book.user_id = user.id
+        where book.name = :book_name
           and user.id = :user_id
         limit 1');  
-    $statement->bindParam(':1000dangersbook_name', $bookName);
+    $statement->bindParam(':book_name', $bookName);
     $statement->bindParam(':user_id', $user_id);
     $result = $statement->execute();
     $result = $statement->setFetchMode(PDO::FETCH_ASSOC); 
@@ -178,13 +177,13 @@ function createNewBook($user_id, $bookName)
 {
     global $conn;
     $statement = $conn->prepare('
-        insert into 1000dangersbook(user_id, name, creationdate) values(:user_id, :1000dangersbook_name, now())');
+        insert into book(user_id, name, creation_date) values(:user_id, :book_name, now())');
     $statement->bindParam(':user_id', $user_id);
-    $statement->bindParam(':1000dangersbook_name', $bookName);
+    $statement->bindParam(':book_name', $bookName);
     $statement->execute();
     $statement = $conn->prepare('
-        insert into papelement(id, 1000dangersbook_id, paptype_id, x, y, title, text) values(1, (select max(id) from 1000dangersbook where name = :1000dangersbook_name and user_id = :user_id), 1, 100, 100, "Title", "Texte")');
-    $statement->bindParam(':1000dangersbook_name', $bookName);
+        insert into fc_shape(id, book_id, fc_shape_type_id, x, y, title, text) values(1, (select max(id) from book where name = :book_name and user_id = :user_id), 1, 100, 100, "Title", "Texte")');
+    $statement->bindParam(':book_name', $bookName);
     $statement->bindParam(':user_id', $user_id);
     $statement->execute();
 }
