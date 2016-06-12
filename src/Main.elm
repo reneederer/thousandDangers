@@ -175,7 +175,12 @@ removeElement model id =
 
 loadElements : Task Http.Error (List FcShape, List FcArrow)
 loadElements =
-    Http.get decodeElements ("http://localhost/elm/thousandDangers/src/db.php?action=load")
+    Http.post
+        decodeElements
+        ("http://localhost/elm/thousandDangers/src/db.php")
+        (Http.multipart
+            [Http.stringData "action" "load"
+            ])
 
 
 decodeElements : Json.Decoder (List FcShape, List FcArrow)
@@ -191,12 +196,18 @@ decodeElements =
         toFcArrow =
             Json.object8 (\id source_id destination_id source_offset_x source_offset_y destination_offset_x destination_offset_y title ->
                 { id=id
-                , startPos=Offset (source_id, source_offset_x, source_offset_y)
-                , endPos=Offset (destination_id, destination_offset_x, destination_offset_y)
+                , startPos=
+                    case source_id of
+                        Nothing -> Global (source_offset_x, source_offset_y)
+                        Just id -> Offset (id, source_offset_x, source_offset_y)
+                , endPos=
+                    case destination_id of
+                        Nothing -> Global (destination_offset_x, destination_offset_y)
+                        Just id -> Offset (id, destination_offset_x, destination_offset_y)
                 , title=title})
                 ("id" := Json.int)
-                ("source_id" := Json.int)
-                ("destination_id" := Json.int)
+                ("source_id" := Json.oneOf [Json.null Nothing, Json.map Just Json.int])
+                ("destination_id" := Json.oneOf [Json.null Nothing, Json.map Just Json.int])
                 ("source_offset_x" := Json.float)
                 ("source_offset_y" := Json.float)
                 ("destination_offset_x" := Json.float)
@@ -217,7 +228,7 @@ readShapeType s =
         _ -> End
 
 
-saveElements : Model -> Task Http.Error String
+saveElements : Model -> Task Http.RawError Http.Response
 saveElements model = 
     let toShapeObject s = 
             object [ ("id", Json.Encode.int s.id)
@@ -230,16 +241,16 @@ saveElements model =
         toArrowObject a = 
             let (source_id, source_offset_x, source_offset_y) = 
                 case a.startPos of
-                    Offset (sid, sx, sy) -> (sid, sx, sy)
-                    Global (sx, sy) -> (0, sx, sy)
+                    Offset (sid, sx, sy) -> (Json.Encode.int sid, sx, sy)
+                    Global (sx, sy) -> (Json.Encode.null, sx, sy)
                 (destination_id, destination_offset_x, destination_offset_y) = 
                 case a.endPos of
-                    Offset (eid, ex, ey) -> (eid, ex, ey)
-                    Global (ex, ey) -> (0, ex, ey)
+                    Offset (eid, ex, ey) -> (Json.Encode.int eid, ex, ey)
+                    Global (ex, ey) -> (Json.Encode.null, ex, ey)
             in
                 object [ ("id", Json.Encode.int a.id)
-                       , ("source_id", Json.Encode.int source_id)
-                       , ("destination_id", Json.Encode.int destination_id)
+                       , ("source_id", source_id)
+                       , ("destination_id", destination_id)
                        , ("source_offset_x", Json.Encode.float source_offset_x)
                        , ("source_offset_y", Json.Encode.float source_offset_y)
                        , ("destination_offset_x", Json.Encode.float destination_offset_x)
@@ -250,7 +261,14 @@ saveElements model =
             , ("arrows", Json.Encode.list (List.map toArrowObject model.fcArrows))])
 
     in
-        Http.getString ("http://localhost/elm/thousandDangers/src/db.php?action=save&flowchart=" ++ json)
+        Http.send
+            Http.defaultSettings
+            { verb="POST"
+            , headers = []
+            , url = "http://localhost/elm/thousandDangers/src/db.php"
+            , body = Http.multipart [ Http.stringData "action" "save" , Http.stringData "flowchart" json]
+            }
+
 
 
 
@@ -298,9 +316,9 @@ update msg model =
                         case x of
                             _ -> {model | debugMsg="b" ++ toString x} ! [x]
                 99 ->
-                    let x = saveElements model |> perform (\a -> HttpFailure (toString a)) (\a -> KeyMsg 108)
+                    let x = Debug.log "asd: " (saveElements model |> perform (\a -> HttpFailure (toString a)) (\a -> HttpFailure (toString a)))
                     in
-                        model ! [x]
+                        {model | debugMsg="jkas"} ! [x]
                 127 -> (removeElement model model.selectedElement) ! []
                 _ -> model ! []
         HttpSuccess s -> {model | fcShapes=(fst s), fcArrows=(snd s)} ! []
@@ -391,8 +409,14 @@ view model =
     Debug.log model.debugMsg
     svg [ viewBox "0 0 8500 11500", width "8500", height "11500",  pointerEvents "none"]
         (([defs []
-            [marker [id "arrowHead", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto"]
-                    [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]]
+            [ marker [id "arrowHead", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto"]
+                    [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]
+            , marker [id "arrowHeadRotated", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto-start-reverse"]
+                    [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]
+            , marker [id "arrowCaption", markerWidth "600", viewBox "-300, -120, 600, 120", markerHeight "120", refX "50", refY "0", orient "auto"]
+                    [text' [ fontSize (toString myFontSize), fontFamily myFontFamily, x (toString -50), y (toString -10), fill "green"] [Svg.text "Hallo Welt"]]
+            , marker [id "arrowCaptionRotated", markerWidth "180", viewBox "-40, -60, 420, 120", markerHeight "52", refX "50", refY "0", orient "auto-start-reverse"]
+                    [text' [ fontSize (toString myFontSize), fontFamily myFontFamily, x (toString -50), y (toString -10), fill "green"] [Svg.text "Hallo Welt"]]]
         ]) ++
         (List.map (fcShapeToSvg model) model.fcShapes ++
          List.map (fcArrowToSvg model) model.fcArrows ++
@@ -421,8 +445,19 @@ fcArrowToSvg model {id, startPos, endPos, title} =
                             Nothing -> (0, 0)
                             Just e -> (x + e.x, y + e.y)
     in
-        g [] [ line [x1 (toString startX), y1 (toString startY), x2 (toString endX), y2 (toString <| endY), markerEnd "url(#arrowHead)", Svg.Attributes.style "stroke:rgb(255,0,0);stroke-width:2"] []
-             , text' [ x (toString startX), y (toString startY)] [Svg.text title]]
+        if endX > startX
+        then 
+            Svg.path [
+                    d ( "M " ++ (toString startX) ++ ", " ++ (toString startY) ++
+                        " L " ++ (toString ((endX-startX)/2+startX)) ++ ", " ++ (toString ((endY-startY)/2+startY)) ++
+                        " L " ++ (toString endX) ++ ", " ++ (toString endY)), markerEnd "url(#arrowHead)", markerMid "url(#arrowCaption)", Svg.Attributes.style "stroke:rgb(255,0,0);stroke-width:2"] []
+        else
+            Svg.path [
+                    d ( "M " ++ (toString endX) ++ ", " ++ (toString endY) ++
+                        " L " ++ (toString ((startX-endX)/2+endX)) ++ ", " ++ (toString ((startY-endY)/2+endY)) ++
+                        " L " ++ (toString startX) ++ ", " ++ (toString startY)), markerStart "url(#arrowHeadRotated)", markerMid "url(#arrowCaptionRotated)", Svg.Attributes.style "stroke:rgb(255,0,0);stroke-width:2"] []
+                          
+                         
 
 
 fcShapeToSvg : Model -> FcShape -> Svg.Svg Msg
@@ -507,8 +542,45 @@ fcShapeToSvg model fcShape =
                           , y (toString (fcShape.y+outerPadding + innerPadding + textHeight / 2 + myFontSize / 3))
                           , fill textColor ] [Svg.text fcShape.title]]
         End ->
-                circle [ pointerEvents "all"] []
-            --circle [ onMouseDown (Inner fcShape.id), cx (toString fcShape.x), cy (toString fcShape.y), r "45", fill "#0B79CE" ] []
+            let (textWidth, textHeight) = getTextDimension fcShape.title "Courier" 20
+                innerShapeWidth = textWidth + innerPadding + innerPadding
+                innerShapeHeight = textHeight + innerPadding + innerPadding
+                outerShapeWidth = innerShapeWidth + outerPadding + outerPadding
+                outerShapeHeight = innerShapeHeight + outerPadding + outerPadding
+            in
+                g [ pointerEvents "all"] [
+                         
+                    rect [ onMouseDown (DownMsg {areaType=Outer, id=fcShape.id})
+                         , onMouseUp (UpMsg {areaType=Outer, id=fcShape.id})
+                         , x (toString fcShape.x)
+                         , y (toString <| fcShape.y)
+                         , width <| toString outerShapeWidth
+                         , height <| toString outerShapeHeight
+                         ,  rx "30"
+                         , ry "30"
+                         , stroke strokeColor
+                         , strokeDasharray "10,10"
+                         , fill outerColor
+                         ] [],
+                    rect [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
+                         , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
+                         , x (toString (fcShape.x + outerPadding))
+                         , y (toString (fcShape.y + outerPadding))
+                         , width <| toString innerShapeWidth
+                         , height <| toString innerShapeHeight
+                         ,  rx "25"
+                         , ry "25"
+                         , fill innerColor ] [],
+                    text' [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
+                          , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
+                          , pointerEvents "none"
+                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+                          , fontFamily myFontFamily
+                          ,  fontSize (toString myFontSize)
+                          ,  Svg.Attributes.cursor "default"
+                          , x (toString (fcShape.x + outerPadding + innerPadding))
+                          , y (toString (fcShape.y+outerPadding + innerPadding + textHeight / 2 + myFontSize/3))
+                          , fill textColor] [Svg.text fcShape.title]]
         Condition ->
             let (textWidth, textHeight) = getTextDimension fcShape.title "Courier" 20
                 innerShapeWidth = textWidth + innerPadding + innerPadding
