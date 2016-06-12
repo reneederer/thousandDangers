@@ -28,7 +28,6 @@ innerPadding = 20.0
 
 outerPadding = 30.0
 
-options = {preventDefault=True, stopPropagation=True}
 
 main =
   Html.program
@@ -118,6 +117,7 @@ type Msg =
     | HttpSuccess (List FcShape, List FcArrow)
     | HttpFailure String
     | TitleChanged String
+    | TextChanged String
 
 -- MODEL
 
@@ -155,8 +155,8 @@ init =
 
 
 
-getElementWithId : Model -> Id -> Maybe FcShape
-getElementWithId model id = 
+getShapeWithId : Model -> Id -> Maybe FcShape
+getShapeWithId model id = 
     head <| List.filter (\el -> el.id == id) model.fcShapes
 
     
@@ -166,12 +166,27 @@ findFreeId l =
     List.foldl (\el state -> if el.id >= state then el.id + 1 else state) 1 l
 
 
-removeElement : Model -> Id -> Model
-removeElement model id =
-    let newShapes = List.foldr (\el state -> if el.id == id then state else (el::state)) [] model.fcShapes
-        newArrows = List.foldr (\el state -> if el.id == id then state else (el::state)) [] model.fcArrows
+removeShape : Model -> Id -> Model
+removeShape model id =
+    let mshape = getShapeWithId model id
     in
-        { model | fcShapes=newShapes, fcArrows=newArrows }
+    case mshape of
+        Nothing -> model
+        Just shape ->
+            let newShapes = List.foldr (\el state -> if el.id == id then state else (el::state)) [] model.fcShapes
+                newArrows = List.map (\ar ->
+                    let newStartPos = 
+                        case ar.startPos of
+                            Offset (id, x, y) -> if (id == shape.id) then Global (x + shape.x, y + shape.y) else ar.startPos
+                            _ -> ar.startPos
+                        newEndPos = 
+                        case ar.endPos of
+                            Offset (id, x, y) -> if (id == shape.id) then Global (x + shape.x, y + shape.y) else ar.endPos
+                            _ -> ar.endPos
+                    in
+                        { ar | startPos = newStartPos, endPos = newEndPos }) model.fcArrows
+            in
+                { model | fcShapes=newShapes, fcArrows=newArrows }
 
 
 
@@ -294,7 +309,7 @@ update msg model =
                     case model.dragElement of
                         Nothing -> Nothing
                         (Just  ({areaType, id})) -> Just id
-                shapePos = Maybe.map (getElementWithId model) id
+                shapePos = Maybe.map (getShapeWithId model) id
             in
                 case shapePos of
                     Just (Just el) ->
@@ -323,8 +338,8 @@ update msg model =
                     let x = Debug.log "asd: " (saveElements model |> perform (\a -> HttpFailure (toString a)) (\a -> HttpFailure (toString a)))
                     in
                         {model | debugMsg="jkas"} ! [x]
-                127 -> (removeElement model model.selectedElement) ! []
-                _ -> { model | debugMsg="kein event" } ! []
+                46 -> (removeShape model model.selectedElement) ! []
+                c -> { model | debugMsg="kein event" ++ (toString c) } ! []
         KeyMs -> { model | debugMsg="keyms!!"} ! []
         HttpSuccess s -> {model | fcShapes=(fst s), fcArrows=(snd s)} ! []
         HttpFailure s -> { model | debugMsg="HttpFailure " ++ s } ! []
@@ -332,6 +347,11 @@ update msg model =
             let m = { model | fcShapes = List.map (\el -> if el.id == model.selectedElement then {el | title = s} else el) model.fcShapes}
             in
                 m ! []
+        TextChanged s ->
+            let m = { model | fcShapes = List.map (\el -> if el.id == model.selectedElement then {el | text = s} else el) model.fcShapes}
+            in
+                m ! []
+
         UpMsg { areaType, id} ->
             {model |dragElement=Nothing, currentLine=Maybe.map (\l -> (fst l, Offset (id, 0, 0))) model.currentLine } ! []
         MouseUp pos ->
@@ -341,7 +361,7 @@ update msg model =
                     Just a ->
                         case a.endPos of
                             Offset (id, _, _) ->
-                                let element = getElementWithId model id
+                                let element = getShapeWithId model id
                                     (offsetX, offsetY) = 
                                         case element of
                                             Nothing -> (0.0, 0.0)
@@ -363,7 +383,7 @@ update msg model =
                             in
                                 m ! []
                         Outer ->
-                            let element = getElementWithId model id
+                            let element = getShapeWithId model id
                                 m = 
                                     case element of
                                         Nothing -> model
@@ -418,7 +438,7 @@ view model =
     in
     Debug.log model.debugMsg
     Html.div [Html.Attributes.style [("width", "100%"), ("height", "100%")]]
-        [ Html.div [ Html.Attributes.tabindex 1, Html.Events.on "keydown" (Html.Events.keyCode |> Json.map (\x -> KeyMsg (Debug.log "ev : " x))), Html.Attributes.style [("width", "70%"), ("height", "100%"),  ("overflow", "scroll"), ("backgroundColor", "yellow")]] [
+        [ Html.div [ Html.Attributes.tabindex 0, Html.Attributes.autofocus True, Html.Events.on "keydown" (Html.Events.keyCode |> Json.map (\x -> KeyMsg (Debug.log "ev : " x))), Html.Attributes.style [("width", "70%"), ("height", "100%"),  ("overflow", "scroll"), ("backgroundColor", "yellow")]] [
             svg [ Svg.Attributes.style "background-color:lightblue", viewBox "0 0 8500 8500", width "8500", height "8500",  pointerEvents "none"]
                 (([defs []
                     [ marker [id "arrowHead", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto"]
@@ -441,16 +461,16 @@ view model =
             , ("width", "30%")
             , ("height", "100%")
             , ("backgroundColor", "lightGray")]]
-            [Html.table []
+            [Html.table [Html.Attributes.style [("width", "100%")]]
                 [ Html.tr []
                     [ Html.td []
                         [ text "Titel"
-                        , Html.input [Html.Events.onInput TitleChanged][]]
+                        , Html.input [ Html.Attributes.value (Maybe.withDefault "hal" (Maybe.map (\x -> x.title) (getShapeWithId model (model.selectedElement)))), Html.Events.onInput TitleChanged][]]
                     ]
                 , Html.tr []
                     [ Html.td []
                         [ text "Text"
-                        , Html.input [][]]
+                        , Html.textarea [ Html.Attributes.rows 20, Html.Attributes.style [("width", "70%")], Html.Attributes.value (Maybe.withDefault "hal" (Maybe.map (\x -> x.text) (getShapeWithId model (model.selectedElement)))), Html.Events.onInput TextChanged][]]
                     ]
                 ]
             ]
@@ -464,7 +484,7 @@ fcArrowToSvg model {id, startPos, endPos, title} =
         case startPos of
             Global (x, y) -> (x, y)
             Offset (id, x, y) ->
-                let el = getElementWithId model id
+                let el = getShapeWithId model id
                 in
                     case el of
                         Nothing -> (0, 0)
@@ -473,7 +493,7 @@ fcArrowToSvg model {id, startPos, endPos, title} =
             case endPos of
                 Global (x, y) -> (x, y)
                 Offset (id, x, y) ->
-                    let el = getElementWithId model id
+                    let el = getShapeWithId model id
                     in
                         case el of
                             Nothing -> (0, 0)
@@ -657,13 +677,6 @@ getTextDimension text  font  fontSize =
     case font of
         "Courier" -> ((toFloat (fontSize * (length text))) * 0.6, toFloat fontSize)
         _ -> ((toFloat (fontSize * (length text))) * 0.6, toFloat fontSize)
-
-
-
-
-
-
-
 
 
 
