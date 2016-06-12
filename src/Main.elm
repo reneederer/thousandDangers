@@ -1,12 +1,14 @@
 module Main exposing (..)
 
 import Html exposing (Html)
+import Html.Attributes
+import Html.Events
 import Html.App as Html
 import Http
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Debug as Debug
-import Svg.Events exposing (onMouseUp, onMouseDown, onClick, onMouseMove)
+import Svg.Events exposing (..)
 import Mouse
 import Keyboard
 import VirtualDom exposing (onWithOptions)
@@ -26,7 +28,7 @@ innerPadding = 20.0
 
 outerPadding = 30.0
 
-options = {preventDefault=True, stopPropagation=False}
+options = {preventDefault=True, stopPropagation=True}
 
 main =
   Html.program
@@ -110,10 +112,12 @@ type Msg =
     | MouseUp Mouse.Position
     | MouseMove Mouse.Position
     | KeyMsg Keyboard.KeyCode
+    | KeyMs
     | DownMsg ShapeArea
     | UpMsg ShapeArea
     | HttpSuccess (List FcShape, List FcArrow)
     | HttpFailure String
+    | TitleChanged String
 
 -- MODEL
 
@@ -309,20 +313,25 @@ update msg model =
                         model ! []
         KeyMsg code ->
             case code of 
-                97 -> {model | debugMsg = "a pressed", fcShapes = model.fcShapes ++ [ (createStartElement (findFreeId model.fcShapes) 400.0 400.0)]} ! []
-                98 ->
+                65 -> {model | debugMsg = "a pressed", fcShapes = model.fcShapes ++ [ (createStartElement (findFreeId model.fcShapes) 400.0 400.0)]} ! []
+                66 ->
                     let x = loadElements |> perform (\a -> HttpFailure (toString a)) (\a -> HttpSuccess a)
                     in
                         case x of
                             _ -> {model | debugMsg="b" ++ toString x} ! [x]
-                99 ->
+                67 ->
                     let x = Debug.log "asd: " (saveElements model |> perform (\a -> HttpFailure (toString a)) (\a -> HttpFailure (toString a)))
                     in
                         {model | debugMsg="jkas"} ! [x]
                 127 -> (removeElement model model.selectedElement) ! []
-                _ -> model ! []
+                _ -> { model | debugMsg="kein event" } ! []
+        KeyMs -> { model | debugMsg="keyms!!"} ! []
         HttpSuccess s -> {model | fcShapes=(fst s), fcArrows=(snd s)} ! []
         HttpFailure s -> { model | debugMsg="HttpFailure " ++ s } ! []
+        TitleChanged s ->
+            let m = { model | fcShapes = List.map (\el -> if el.id == model.selectedElement then {el | title = s} else el) model.fcShapes}
+            in
+                m ! []
         UpMsg { areaType, id} ->
             {model |dragElement=Nothing, currentLine=Maybe.map (\l -> (fst l, Offset (id, 0, 0))) model.currentLine } ! []
         MouseUp pos ->
@@ -349,7 +358,8 @@ update msg model =
                 Just {areaType, id} -> 
                     case areaType of
                         Inner ->
-                            let m = moveElementTo model model.dragElement (toFloat pos.x-model.dragOffsetX) (toFloat pos.y-model.dragOffsetY)
+                            let l = Debug.log "offsetX " model.dragOffsetX
+                                m = moveElementTo model model.dragElement (toFloat pos.x-l) (toFloat pos.y-model.dragOffsetY)
                             in
                                 m ! []
                         Outer ->
@@ -392,7 +402,7 @@ isSameElement pos1 pos2 =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch [ Keyboard.presses KeyMsg, Mouse.downs MouseDown, Mouse.moves MouseMove, Mouse.ups MouseUp]
+    Sub.batch [ Mouse.downs MouseDown, Mouse.moves MouseMove, Mouse.ups MouseUp]
 
 
 
@@ -407,20 +417,44 @@ view model =
             Just (startPos, endPos)-> [fcArrowToSvg model {id=-1, startPos=startPos, endPos=endPos, title="no title"}]
     in
     Debug.log model.debugMsg
-    svg [ viewBox "0 0 8500 11500", width "8500", height "11500",  pointerEvents "none"]
-        (([defs []
-            [ marker [id "arrowHead", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto"]
-                    [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]
-            , marker [id "arrowHeadRotated", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto-start-reverse"]
-                    [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]
-            , marker [id "arrowCaption", markerWidth "600", viewBox "-300, -120, 600, 120", markerHeight "120", refX "50", refY "0", orient "auto"]
-                    [text' [ fontSize (toString myFontSize), fontFamily myFontFamily, x (toString -50), y (toString -10), fill "green"] [Svg.text "Hallo Welt"]]
-            , marker [id "arrowCaptionRotated", markerWidth "180", viewBox "-40, -60, 420, 120", markerHeight "52", refX "50", refY "0", orient "auto-start-reverse"]
-                    [text' [ fontSize (toString myFontSize), fontFamily myFontFamily, x (toString -50), y (toString -10), fill "green"] [Svg.text "Hallo Welt"]]]
-        ]) ++
-        (List.map (fcShapeToSvg model) model.fcShapes ++
-         List.map (fcArrowToSvg model) model.fcArrows ++
-         cur))
+    Html.div [Html.Attributes.style [("width", "100%"), ("height", "100%")]]
+        [ Html.div [ Html.Attributes.tabindex 1, Html.Events.on "keydown" (Html.Events.keyCode |> Json.map (\x -> KeyMsg (Debug.log "ev : " x))), Html.Attributes.style [("width", "70%"), ("height", "100%"),  ("overflow", "scroll"), ("backgroundColor", "yellow")]] [
+            svg [ Svg.Attributes.style "background-color:lightblue", viewBox "0 0 8500 8500", width "8500", height "8500",  pointerEvents "none"]
+                (([defs []
+                    [ marker [id "arrowHead", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto"]
+                            [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]
+                    , marker [id "arrowHeadRotated", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto-start-reverse"]
+                            [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]
+                    , marker [id "arrowCaption", markerWidth "600", viewBox "-300, -120, 600, 120", markerHeight "120", refX "50", refY "0", orient "auto"]
+                            [text' [ Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;", fontSize (toString myFontSize), fontFamily myFontFamily, x (toString -50), y (toString -10), fill "green"] [Svg.text "Hallo Welt"]]
+                    , marker [id "arrowCaptionRotated", markerWidth "180", viewBox "-40, -60, 420, 120", markerHeight "52", refX "50", refY "0", orient "auto-start-reverse"]
+                            [text' [Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;", fontSize (toString myFontSize), fontFamily myFontFamily, x (toString -50), y (toString -10), fill "green"] [Svg.text "Hallo Welt"]]]
+                          
+                ]) ++
+                (List.map (fcShapeToSvg model) model.fcShapes ++
+                 List.map (fcArrowToSvg model) model.fcArrows ++
+                 cur))] 
+        , Html.div [ Html.Attributes.style
+            [ ("position", "fixed")
+            , ("top", "0px")
+            , ("right", "0px")
+            , ("width", "30%")
+            , ("height", "100%")
+            , ("backgroundColor", "lightGray")]]
+            [Html.table []
+                [ Html.tr []
+                    [ Html.td []
+                        [ text "Titel"
+                        , Html.input [Html.Events.onInput TitleChanged][]]
+                    ]
+                , Html.tr []
+                    [ Html.td []
+                        [ text "Text"
+                        , Html.input [][]]
+                    ]
+                ]
+            ]
+        ]
 
 
 
