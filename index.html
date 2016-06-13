@@ -1,0 +1,12 @@
+<html>
+<div id="my-thing">
+<script src="my-thing.js"></script>
+<script>
+    var node = document.getElementById('my-thing')
+    var app = Elm.Main.fullscreen();
+    app.ports.getScrollPosition.subscribe(function(id){
+        var el = document.getElementById(id)
+        return app.ports.scrollPositionTold.send({x : el.scrollLeft, y : el.scrollTop})
+    })
+</script>
+</html>

@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Html exposing (Html)
 import Html.Attributes
@@ -44,6 +44,10 @@ type ShapeType =
     | Condition
     | Action
 
+type alias Position = 
+    { x : Float
+    , y : Float
+    }
 
 type alias FcShape =
     { id : Id
@@ -118,8 +122,9 @@ type Msg =
     | HttpFailure String
     | TitleChanged String
     | TextChanged String
-    | UpdateView
     | DisplayDiv Int
+    | SetScrollPosition String
+    | ScrollPositionTold Position
 
 -- MODEL
 
@@ -134,6 +139,7 @@ type alias Model =
     , selectedElement : Id
     , currentLine : Maybe (FcPos, FcPos)
     , displayedDivId : Int
+    , mainDivOffset : Position
     }
 
 
@@ -154,6 +160,7 @@ init =
         , selectedElement=1
         , currentLine=Nothing
         , displayedDivId=1
+        , mainDivOffset={x=0.0, y=0.0}
     }, Cmd.none)
 
 -- UPDATE
@@ -279,7 +286,7 @@ saveElements model =
                        , ("source_offset_y", Json.Encode.float source_offset_y)
                        , ("destination_offset_x", Json.Encode.float destination_offset_x)
                        , ("destination_offset_y", Json.Encode.float destination_offset_y)
-                       , ("title", Json.Encode.string (toString a.id)) ]
+                       , ("title", Json.Encode.string a.title) ]
         json = encode 4 (object
             [ ("shapes", Json.Encode.list (List.map toShapeObject model.fcShapes))
             , ("arrows", Json.Encode.list (List.map toArrowObject model.fcArrows))])
@@ -307,10 +314,11 @@ update msg model =
     case msg of
         DownMsg { areaType, id} ->
             case areaType of
-                Inner -> {model | dragElement=(Just {areaType=areaType, id=id}), selectedElement=id, currentLine=Nothing } ! []
-                Outer -> {model | dragElement=(Just {areaType=areaType, id=id}), selectedElement=id, currentLine=Just (Offset (id, 0, 0), Offset (id, 0, 0)) } ! []
-        MouseDown pos->
-            let id = 
+                Inner -> {model | dragElement=(Just {areaType=areaType, id=id}), displayedDivId=id, selectedElement=id, currentLine=Nothing } ! []
+                Outer -> {model | dragElement=(Just {areaType=areaType, id=id}), displayedDivId=id, selectedElement=id, currentLine=Just (Offset (id, 0, 0), Offset (id, 0, 0)) } ! []
+        MouseDown lpos->
+            let pos = localToGlobal {x=toFloat lpos.x, y=toFloat lpos.y} model.mainDivOffset 
+                id = 
                     case model.dragElement of
                         Nothing -> Nothing
                         (Just  ({areaType, id})) -> Just id
@@ -318,16 +326,17 @@ update msg model =
             in
                 case shapePos of
                     Just (Just el) ->
-                        let offsetX=(toFloat pos.x)-el.x
-                            offsetY=(toFloat pos.y)-el.y
+                        let offsetX=(pos.x)-el.x
+                            offsetY=(pos.y)-el.y
                         in
-                        { model | dragOffsetX=offsetX
-                                , dragOffsetY=offsetY
-                                , currentLine=Maybe.map (\(s, e) -> 
-                                                    case s of 
-                                                        Offset (id, x, y) -> (Offset (id, offsetX, offsetY), Offset (id, offsetX, offsetY))
-                                                        _ -> (s, e))
-                                     model.currentLine } ! []
+                            Debug.log "mousedown!!!"
+                            { model | dragOffsetX=offsetX
+                                    , dragOffsetY=offsetY
+                                    , currentLine=Maybe.map (\(s, e) -> 
+                                                        case s of 
+                                                            Offset (id, x, y) -> (Offset (id, offsetX, offsetY), Offset (id, offsetX, offsetY))
+                                                            _ -> (s, e))
+                                         model.currentLine } ! []
                     _ ->
                         --Debug.log "soll das so sein?"
                         model ! []
@@ -337,16 +346,23 @@ update msg model =
                 66 ->
                     let x = loadElements |> perform (\a -> HttpFailure (toString a)) (\a -> HttpSuccess a)
                     in
-                        case x of
-                            _ -> {model | debugMsg="b" ++ toString x} ! [x]
+                        Debug.log "b gedrueckt"
+                        {model | debugMsg="b" ++ toString x} ! [x]
                 67 ->
                     let x = (saveElements model |> perform (\a -> HttpFailure (toString a)) (\a -> HttpFailure (toString a)))
                     in
                         {model | debugMsg="jkas"} ! [x]
                 46 -> (removeShape model model.selectedElement) ! []
                 c -> { model | debugMsg="kein event" ++ (toString c) } ! []
+        SetScrollPosition s -> 
+            model ! [getScrollPosition s]
+        ScrollPositionTold scrollOffset ->
+            Debug.log (toString scrollOffset.x)
+            { model | mainDivOffset = scrollOffset } ! []
         HttpSuccess s -> {model | fcShapes=(fst s), fcArrows=(snd s)} ! []
-        HttpFailure s -> { model | debugMsg="HttpFailure " ++ s } ! []
+        HttpFailure s -> 
+            Debug.log s
+            { model | debugMsg="HttpFailure " ++ s } ! []
         TitleChanged s ->
             let m = { model | fcShapes = List.map (\el -> if el.id == model.selectedElement then {el | title = s} else el) model.fcShapes}
             in
@@ -357,10 +373,10 @@ update msg model =
                 m ! []
 
         UpMsg { areaType, id} ->
+            Debug.log "mouseup!!!"
             {model |dragElement=Nothing, currentLine=Maybe.map (\l -> (fst l, Offset (id, 0, 0))) model.currentLine } ! []
-        UpdateView -> model ! []
         DisplayDiv id ->
-            { model |  displayedDivId=id } ! []
+            { model | displayedDivId=id } ! []
         MouseUp pos ->
             let arrow = Maybe.map (\l -> { id=findFreeId model.fcShapes, startPos=(fst l), endPos=(snd l) }) model.currentLine
                 h = case arrow of 
@@ -381,14 +397,15 @@ update msg model =
                 let newModel = {model | dragElement=Nothing, fcArrows=(h++model.fcArrows), currentLine=Nothing }
                 in 
                     newModel ! []
-        MouseMove pos ->
+        MouseMove lpos ->
+            let pos = localToGlobal { x = toFloat lpos.x, y = toFloat lpos.y }  model.mainDivOffset
+            in
             case model.dragElement of
                 Nothing -> model ! []
                 Just {areaType, id} -> 
                     case areaType of
                         Inner ->
-                            let l = Debug.log "offsetX " model.dragOffsetX
-                                m = moveElementTo model model.dragElement (toFloat pos.x-l) (toFloat pos.y-model.dragOffsetY)
+                            let m = moveElementTo model model.dragElement (pos.x-model.dragOffsetX) (pos.y-model.dragOffsetY)
                             in
                                 m ! []
                         Outer ->
@@ -397,9 +414,14 @@ update msg model =
                                     case element of
                                         Nothing -> model
                                         Just el -> 
-                                            { model | currentLine=(Maybe.map (\(startPos, _) -> (startPos, Global (toFloat pos.x, toFloat pos.y))) model.currentLine)}
+                                            { model | currentLine=(Maybe.map (\(startPos, _) -> (startPos, Global (pos.x, pos.y))) model.currentLine)}
                             in
                                 m ! []
+
+localToGlobal : Position -> Position -> Position
+localToGlobal pos offset = 
+    { x = pos.x + offset.x
+    , y = pos.y + offset.y }
 
 
 moveElementTo : Model -> Maybe ShapeArea -> Float -> Float -> Model
@@ -428,10 +450,17 @@ isSameElement pos1 pos2 =
         _ -> False
 
 
+port scrollPositionTold : (Position -> msg) -> Sub msg
+
+port getScrollPosition : String -> Cmd msg
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch [ Mouse.downs MouseDown, Mouse.moves MouseMove, Mouse.ups MouseUp]
+    --Sub.batch [ Mouse.moves MouseMove, Mouse.ups MouseUp]
+    Sub.batch [ scrollPositionTold ScrollPositionTold
+              , Mouse.moves MouseMove
+              , Mouse.ups MouseUp
+              , Mouse.downs MouseDown]
 
 
 
@@ -463,19 +492,40 @@ createHtml model id =
                                                 Offset (endShapeId, _, _) -> Just endShapeId
                                                 _ -> Nothing) arrows
                 in
-                        case shape.shapeType of
-                            Condition ->
-                                [Html.p
-                                    [Html.Attributes.id (toString id)]
-                                    [Html.a [Html.Attributes.href "#", Html.Events.onClick (DisplayDiv ((Maybe.withDefault 0 (head newIds))))] [text shape.text]]]
-                            _ -> 
-                                (Html.p
-                                    [Html.Attributes.id (toString id)] [text shape.text])::
-                                    (List.foldl (\el state ->
-                                        ((Html.p [Html.Attributes.id (toString el)] (createHtml { model | fcArrows = List.filter (\x -> not (x `List.member` arrows)) model.fcArrows } el))::state)) [] newIds)
+                    case shape.shapeType of
+                        Condition ->
+                            (Html.p
+                                [Html.Attributes.id (toString id)]
+                                [text shape.text])::
+                            (List.foldl
+                                (\el state ->
+                                    case el.endPos of
+                                        Offset (endId, _, _) ->
+                                            Html.p [] [Html.a [Html.Attributes.href "#", Html.Events.onClick (DisplayDiv endId)] [Html.text el.title]]::state
+                                        _ -> state
+                                ) [] arrows
+                            )
+                        _ -> 
+                            (Html.p
+                                [Html.Attributes.id (toString id)] [text shape.text])::
+                            (createHtml model (Maybe.withDefault -1 (head newIds)))
 
 
--- VIEW
+getStartShapeId : FcArrow -> Maybe Id
+getStartShapeId arr = 
+    case arr.startPos of
+       Offset (startId, _, _) -> Just startId
+       _ -> Nothing
+
+getEndShapeId : FcArrow -> Maybe Id
+getEndShapeId arr = 
+    case arr.endPos of
+       Offset (endId, _, _) -> Just endId
+       _ -> Nothing
+
+
+
+
 
 
 view : Model -> Html Msg
@@ -486,8 +536,12 @@ view model =
             Just (startPos, endPos)-> [fcArrowToSvg model {id=-1, startPos=startPos, endPos=endPos, title="no title"}]
     in
         Html.div [Html.Attributes.style [("width", "100%"), ("height", "100%")]]
-        [ Html.div [ Html.Attributes.tabindex 0, Html.Attributes.autofocus True, Html.Events.on "keydown" (Html.Events.keyCode |> Json.map (\x -> KeyMsg (Debug.log "ev : " x))), Html.Attributes.style [("width", "70%"), ("height", "100%"),  ("overflow", "scroll"), ("backgroundColor", "yellow")]] [
-            svg [ Svg.Attributes.style "background-color:lightblue", viewBox "0 0 8500 8500", width "8500", height "8500",  pointerEvents "none"]
+        [ Html.div [ Html.Attributes.id "mainEl"
+                   , Html.Attributes.tabindex 0
+                   , Html.Events.on "keydown" (Html.Events.keyCode |> Json.map (\keyCode -> KeyMsg keyCode))
+                   , Html.Events.on "scroll" (Json.succeed (SetScrollPosition "mainEl"))
+                   , Html.Attributes.style [("width", "70%"), ("height", "100%"),  ("overflow", "scroll"), ("backgroundColor", "yellow")]] [
+            svg [ Svg.Attributes.style "background-color:lightblue", viewBox "0 0 8500 8500", width "8500", height "8500", pointerEvents "none"]
                 (([defs []
                     [ marker [id "arrowHead", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto"]
                         [ g []
@@ -505,7 +559,8 @@ view model =
                 (List.map (fcShapeToSvg model) model.fcShapes ++
                  List.map (fcArrowToSvg model) model.fcArrows ++
                  cur))] 
-        , Html.div [ Html.Attributes.style
+        , Html.div [
+            Html.Attributes.style
             [ ("position", "fixed")
             , ("top", "0px")
             , ("right", "0px")
