@@ -7,7 +7,7 @@ import Html.App as Html
 import Http
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
-import Debug as Debug
+import Debug
 import Svg.Events exposing (..)
 import Mouse
 import Keyboard
@@ -21,6 +21,7 @@ import Maybe exposing (withDefault)
 import List exposing (head)
 import Task exposing (..)
 import String
+import List
 
 myFontSize = 20
 myFontFamily = "Courier"
@@ -111,13 +112,14 @@ type Msg =
     | MouseUp Mouse.Position
     | MouseMove Mouse.Position
     | KeyMsg Keyboard.KeyCode
-    | KeyMs
     | DownMsg ShapeArea
     | UpMsg ShapeArea
     | HttpSuccess (List FcShape, List FcArrow)
     | HttpFailure String
     | TitleChanged String
     | TextChanged String
+    | UpdateView
+    | DisplayDiv Int
 
 -- MODEL
 
@@ -130,15 +132,17 @@ type alias Model =
     , dragOffsetX : Float
     , dragOffsetY : Float
     , selectedElement : Id
-    , currentLine : Maybe (FcPos, FcPos)}
+    , currentLine : Maybe (FcPos, FcPos)
+    , displayedDivId : Int
+    }
 
 
 init : (Model, Cmd Msg)
 init =
     ({
         fcShapes =
-            [ ({id=1, shapeType=Start, x=40,y=90,text="",title="1"})
-            , ({id=2, shapeType=Action, x=40,y=490,text="",title="tre2"})]
+            [ ({id=1, shapeType=Start, x=40,y=90,text="abc",title="1"})
+            , ({id=2, shapeType=Action, x=40,y=490,text="def",title="tre2"})]
             --, ({id=3, shapeType=End, x=150,y=290,text="",title="j23j"})]
         , fcArrows =
             [ ({id=1, startPos= Offset (1, 10, 40), endPos=Offset (2, 50, 5), title="1"})
@@ -149,6 +153,7 @@ init =
         , dragOffsetY=0
         , selectedElement=1
         , currentLine=Nothing
+        , displayedDivId=1
     }, Cmd.none)
 
 -- UPDATE
@@ -324,7 +329,7 @@ update msg model =
                                                         _ -> (s, e))
                                      model.currentLine } ! []
                     _ ->
-                        Debug.log "soll das so sein?"
+                        --Debug.log "soll das so sein?"
                         model ! []
         KeyMsg code ->
             case code of 
@@ -335,12 +340,11 @@ update msg model =
                         case x of
                             _ -> {model | debugMsg="b" ++ toString x} ! [x]
                 67 ->
-                    let x = Debug.log "asd: " (saveElements model |> perform (\a -> HttpFailure (toString a)) (\a -> HttpFailure (toString a)))
+                    let x = (saveElements model |> perform (\a -> HttpFailure (toString a)) (\a -> HttpFailure (toString a)))
                     in
                         {model | debugMsg="jkas"} ! [x]
                 46 -> (removeShape model model.selectedElement) ! []
                 c -> { model | debugMsg="kein event" ++ (toString c) } ! []
-        KeyMs -> { model | debugMsg="keyms!!"} ! []
         HttpSuccess s -> {model | fcShapes=(fst s), fcArrows=(snd s)} ! []
         HttpFailure s -> { model | debugMsg="HttpFailure " ++ s } ! []
         TitleChanged s ->
@@ -354,6 +358,9 @@ update msg model =
 
         UpMsg { areaType, id} ->
             {model |dragElement=Nothing, currentLine=Maybe.map (\l -> (fst l, Offset (id, 0, 0))) model.currentLine } ! []
+        UpdateView -> model ! []
+        DisplayDiv id ->
+            { model |  displayedDivId=id } ! []
         MouseUp pos ->
             let arrow = Maybe.map (\l -> { id=findFreeId model.fcShapes, startPos=(fst l), endPos=(snd l) }) model.currentLine
                 h = case arrow of 
@@ -371,7 +378,9 @@ update msg model =
                                     if (isSameElement a.startPos a.endPos) then [] else [{id=elid, startPos=a.startPos, endPos=Offset (id, offsetX, offsetY), title=toString elid}]
                             _ -> []
             in
-                {model | dragElement=Nothing, fcArrows=(h++model.fcArrows), currentLine=Nothing } ! []
+                let newModel = {model | dragElement=Nothing, fcArrows=(h++model.fcArrows), currentLine=Nothing }
+                in 
+                    newModel ! []
         MouseMove pos ->
             case model.dragElement of
                 Nothing -> model ! []
@@ -426,6 +435,46 @@ subscriptions model =
 
 
 
+arrowsWithStartShape : Model -> Id -> List FcArrow
+arrowsWithStartShape model id =
+    List.filter (\x ->
+        case x.startPos of
+            Offset (shapeId, _, _) -> shapeId == id
+            _ -> False) model.fcArrows
+
+arrowsWithEndShape : Model -> Id -> List FcArrow
+arrowsWithEndShape model id =
+    List.filter (\x ->
+        case x.endPos of
+            Offset (shapeId, _, _) -> shapeId == id
+            _ -> False) model.fcArrows
+
+
+createHtml : Model -> Id -> List (Html Msg)
+createHtml model id =
+    let mshape = getShapeWithId model id
+    in
+        case mshape of
+            Nothing -> []
+            Just shape ->
+                let arrows = arrowsWithStartShape model id
+                    newIds = List.filterMap (\x ->
+                                            case x.endPos of
+                                                Offset (endShapeId, _, _) -> Just endShapeId
+                                                _ -> Nothing) arrows
+                in
+                        case shape.shapeType of
+                            Condition ->
+                                [Html.p
+                                    [Html.Attributes.id (toString id)]
+                                    [Html.a [Html.Attributes.href "#", Html.Events.onClick (DisplayDiv ((Maybe.withDefault 0 (head newIds))))] [text shape.text]]]
+                            _ -> 
+                                (Html.p
+                                    [Html.Attributes.id (toString id)] [text shape.text])::
+                                    (List.foldl (\el state ->
+                                        ((Html.p [Html.Attributes.id (toString el)] (createHtml { model | fcArrows = List.filter (\x -> not (x `List.member` arrows)) model.fcArrows } el))::state)) [] newIds)
+
+
 -- VIEW
 
 
@@ -436,17 +485,19 @@ view model =
             Nothing -> []
             Just (startPos, endPos)-> [fcArrowToSvg model {id=-1, startPos=startPos, endPos=endPos, title="no title"}]
     in
-    Debug.log model.debugMsg
-    Html.div [Html.Attributes.style [("width", "100%"), ("height", "100%")]]
+        Html.div [Html.Attributes.style [("width", "100%"), ("height", "100%")]]
         [ Html.div [ Html.Attributes.tabindex 0, Html.Attributes.autofocus True, Html.Events.on "keydown" (Html.Events.keyCode |> Json.map (\x -> KeyMsg (Debug.log "ev : " x))), Html.Attributes.style [("width", "70%"), ("height", "100%"),  ("overflow", "scroll"), ("backgroundColor", "yellow")]] [
             svg [ Svg.Attributes.style "background-color:lightblue", viewBox "0 0 8500 8500", width "8500", height "8500",  pointerEvents "none"]
                 (([defs []
                     [ marker [id "arrowHead", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto"]
+                        [ g []
                             [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]
+                        --    , rect [ y "-24", x "-60", width "400", height "140", Svg.Attributes.style "fill:rgb(144, 0, 144);stroke-width:3;stroke:rgb(0, 40, 150)"] []
+                        ]
                     , marker [id "arrowHeadRotated", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto-start-reverse"]
                             [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]
                     , marker [id "arrowCaption", markerWidth "600", viewBox "-300, -120, 600, 120", markerHeight "120", refX "50", refY "0", orient "auto"]
-                            [text' [ Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;", fontSize (toString myFontSize), fontFamily myFontFamily, x (toString -50), y (toString -10), fill "green"] [Svg.text "Hallo Welt"]]
+                                [ text' [ Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;", fontSize (toString myFontSize), fontFamily myFontFamily, x (toString -50), y (toString -10), fill "green"] [Svg.text "Hallo Welt"]]
                     , marker [id "arrowCaptionRotated", markerWidth "180", viewBox "-40, -60, 420, 120", markerHeight "52", refX "50", refY "0", orient "auto-start-reverse"]
                             [text' [Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;", fontSize (toString myFontSize), fontFamily myFontFamily, x (toString -50), y (toString -10), fill "green"] [Svg.text "Hallo Welt"]]]
                           
@@ -473,6 +524,8 @@ view model =
                         , Html.textarea [ Html.Attributes.rows 20, Html.Attributes.style [("width", "70%")], Html.Attributes.value (Maybe.withDefault "hal" (Maybe.map (\x -> x.text) (getShapeWithId model (model.selectedElement)))), Html.Events.onInput TextChanged][]]
                     ]
                 ]
+            --, Html.div [Html.Attributes.style [("minWidth", "50%")]] [Html.a [Html.Attributes.href "http://localhost"] [text "hallo" ]]
+            , Html.div [Html.Attributes.style [("minWidth", "50%")]] (createHtml model model.displayedDivId)
             ]
         ]
 
