@@ -29,7 +29,12 @@ insert into fc_shape(id, book_id, fc_shape_type_id, x, y, title, text) values
     (8, 1, 3, 800, 590, "Heimreise", "Die Kannibalen organisieren fuer dich die Heimreise. 6 Wochen spaeter bist du zu Hause."),
     (9, 1, 3, 600, 590, "Da bleiben", "Du lebst gluecklich mit den Kannibalen zusammen");
 --insert into fc_arrow(id, book_id, source_id, destination_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title) values(1, 1, 1, null, 40, 50, 70,80, "ja");
-insert into fc_arrow(id, book_id, source_id, destination_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title) values(1, 1, 1, 3, 10, 20, 20,40, "nein");
+insert into fc_arrow(id, book_id, source_id, destination_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title) values
+    (1, 1, 1, 3, 10, 20, 20,40, "titel"),
+    (2, 1, 4, 6, 10, 20, 20,40, "ja"),
+    (3, 1, 4, 5, 10, 20, 20,40, "nein"),
+    (4, 1, 7, 8, 10, 20, 20,40, "ja"),
+    (5, 1, 7, 9, 10, 20, 20,40, "nein");
 
 
 
