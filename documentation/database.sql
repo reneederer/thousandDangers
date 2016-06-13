@@ -24,9 +24,12 @@ insert into fc_shape(id, book_id, fc_shape_type_id, x, y, title, text) values
     (3, 1, 3, 502, 159, "Insel gestrandet", "Du hast Schiffbruch erlitten. Nachdem du dich auf eine einsame Insel gerettet hast, begegnen dir 5 Kannibalen."),
     (4, 1, 4, 797, 85, "Kannibalen kennenlernen?", "Moechtest du dich erstmal mit den Kannibalen anfreunden?"),
     (5, 1, 3, 1015, 333, "Vor Kannibalen fliehen", "Du hast dich dazu entschieden, vor, vor den Kannibalen zu fliehen. Auf der Flucht stolperst du und verblutest qualvoll."),
-    (6, 1, 3, 586, 398, "Mit Kannibalen anfreunden", "Du lernst die Kannibalen kennen. Sie sind viel netter, als man sonst so liest. Sie organisieren fuer dich die Heimreise. 6 Wochen spaeter bist du zu Hause.");
-insert into fc_arrow(id, book_id, source_id, destination_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title) values(1, 1, 1, null, 40, 50, 70,80, "ja");
-insert into fc_arrow(id, book_id, source_id, destination_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title) values(2, 1, 1, 3, 10, 20, 20,40, "nein");
+    (6, 1, 3, 586, 398, "Mit Kannibalen anfreunden", "Du lernst die Kannibalen kennen. Sie sind viel netter, als man sonst so liest."),
+    (7, 1, 4, 800, 500, "Nach Hause fahren?", "Willst du nach Hause fahren?"),
+    (8, 1, 3, 800, 590, "Heimreise", "Die Kannibalen organisieren fuer dich die Heimreise. 6 Wochen spaeter bist du zu Hause."),
+    (9, 1, 3, 600, 590, "Da bleiben", "Du lebst gluecklich mit den Kannibalen zusammen");
+--insert into fc_arrow(id, book_id, source_id, destination_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title) values(1, 1, 1, null, 40, 50, 70,80, "ja");
+insert into fc_arrow(id, book_id, source_id, destination_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title) values(1, 1, 1, 3, 10, 20, 20,40, "nein");
 
 
 
