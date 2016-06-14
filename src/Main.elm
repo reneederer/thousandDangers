@@ -373,12 +373,12 @@ update msg model =
                 m ! []
 
         UpMsg { areaType, id} ->
-            Debug.log "mouseup!!!"
             {model |dragElement=Nothing, currentLine=Maybe.map (\l -> (fst l, Offset (id, 0, 0))) model.currentLine } ! []
         DisplayDiv id ->
             { model | displayedDivId=id } ! []
-        MouseUp pos ->
-            let arrow = Maybe.map (\l -> { id=findFreeId model.fcShapes, startPos=(fst l), endPos=(snd l) }) model.currentLine
+        MouseUp lpos ->
+            let pos = localToGlobal {x=toFloat lpos.x, y=toFloat lpos.y} model.mainDivOffset
+                arrow = Maybe.map (\l -> { id=findFreeId model.fcShapes, startPos=(fst l), endPos=(snd l) }) model.currentLine
                 h = case arrow of 
                     Nothing -> []
                     Just a ->
@@ -388,7 +388,7 @@ update msg model =
                                     (offsetX, offsetY) = 
                                         case element of
                                             Nothing -> (0.0, 0.0)
-                                            Just el -> (toFloat pos.x - el.x, toFloat pos.y - el.y)
+                                            Just el -> (pos.x - el.x, pos.y - el.y)
                                     elid = findFreeId model.fcArrows
                                 in
                                     if (isSameElement a.startPos a.endPos) then [] else [{id=elid, startPos=a.startPos, endPos=Offset (id, offsetX, offsetY), title=toString elid}]
@@ -478,11 +478,15 @@ arrowsWithEndShape model id =
             Offset (shapeId, _, _) -> shapeId == id
             _ -> False) model.fcArrows
 
+createHtml model id = 
+    createHtml1 model id 0
 
-createHtml : Model -> Id -> List (Html Msg)
-createHtml model id =
+createHtml1 : Model -> Id -> Int -> List (Html Msg)
+createHtml1 model id tries =
     let mshape = getShapeWithId model id
     in
+        if tries == 1000 then []
+        else
         case mshape of
             Nothing -> []
             Just shape ->
@@ -508,7 +512,7 @@ createHtml model id =
                         _ -> 
                             (Html.p
                                 [Html.Attributes.id (toString id)] [text shape.text])::
-                            (createHtml model (Maybe.withDefault -1 (head newIds)))
+                            (createHtml1 model (Maybe.withDefault -1 (head newIds)) (tries+1))
 
 
 getStartShapeId : FcArrow -> Maybe Id
@@ -533,32 +537,26 @@ view model =
     let cur = 
         case model.currentLine of
             Nothing -> []
-            Just (startPos, endPos)-> [fcArrowToSvg model {id=-1, startPos=startPos, endPos=endPos, title="no title"}]
+            Just (startPos, endPos)-> [(fcArrowToSvg model {id=-1, startPos=startPos, endPos=endPos, title="no title"})]
+        (arrowSvgs, arrowHeads, arrowTexts) = List.foldl (\(x,y,z) (xs, ys, zs) ->
+                                                        ((x::xs), (y::ys), (z::zs))
+                                                    ) ([],[],[])  (cur++(List.map (fcArrowToSvg model) model.fcArrows))
     in
-        Html.div [Html.Attributes.style [("width", "100%"), ("height", "100%")]]
+        Html.div [Html.Attributes.style [("position", "absolute"), ("top", "0px"), ("left", "0px"), ("width", "100%"), ("height", "100%")]]
         [ Html.div [ Html.Attributes.id "mainEl"
                    , Html.Attributes.tabindex 0
                    , Html.Events.on "keydown" (Html.Events.keyCode |> Json.map (\keyCode -> KeyMsg keyCode))
                    , Html.Events.on "scroll" (Json.succeed (SetScrollPosition "mainEl"))
                    , Html.Attributes.style [("width", "70%"), ("height", "100%"),  ("overflow", "scroll"), ("backgroundColor", "yellow")]] [
-            svg [ Svg.Attributes.style "background-color:lightblue", viewBox "0 0 8500 8500", width "8500", height "8500", pointerEvents "none"]
-                (([defs []
-                    [ marker [id "arrowHead", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto"]
-                        [ g []
-                            [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]
-                        --    , rect [ y "-24", x "-60", width "400", height "140", Svg.Attributes.style "fill:rgb(144, 0, 144);stroke-width:3;stroke:rgb(0, 40, 150)"] []
-                        ]
-                    , marker [id "arrowHeadRotated", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto-start-reverse"]
-                            [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]
-                    , marker [id "arrowCaption", markerWidth "600", viewBox "-300, -120, 600, 120", markerHeight "120", refX "50", refY "0", orient "auto"]
-                                [ text' [ Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;", fontSize (toString myFontSize), fontFamily myFontFamily, x (toString -50), y (toString -10), fill "green"] [Svg.text "Hallo Welt"]]
-                    , marker [id "arrowCaptionRotated", markerWidth "180", viewBox "-40, -60, 420, 120", markerHeight "52", refX "50", refY "0", orient "auto-start-reverse"]
-                            [text' [Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;", fontSize (toString myFontSize), fontFamily myFontFamily, x (toString -50), y (toString -10), fill "green"] [Svg.text "Hallo Welt"]]]
-                          
-                ]) ++
-                (List.map (fcShapeToSvg model) model.fcShapes ++
-                 List.map (fcArrowToSvg model) model.fcArrows ++
-                 cur))] 
+            svg [ Svg.Attributes.cursor "default", Svg.Attributes.style "background-color:lightblue", viewBox "0 0 8500 8500", width "8500", height "8500", pointerEvents "none"]
+                ([defs [pointerEvents "all"]
+                    (arrowHeads ++ arrowTexts)
+                ] ++
+                (List.map (fcShapeToSvg model) model.fcShapes++
+                arrowSvgs
+
+
+                 ))] 
         , Html.div [
             Html.Attributes.style
             [ ("position", "fixed")
@@ -567,7 +565,10 @@ view model =
             , ("width", "30%")
             , ("height", "100%")
             , ("backgroundColor", "lightGray")]]
-            [Html.table [Html.Attributes.style [("width", "100%")]]
+            [Html.table
+                [Html.Attributes.style
+                    [ ("width", "100%")
+                    , ("height", "50%")]]
                 [ Html.tr []
                     [ Html.td []
                         [ text "Titel"
@@ -579,14 +580,13 @@ view model =
                         , Html.textarea [ Html.Attributes.rows 20, Html.Attributes.style [("width", "70%")], Html.Attributes.value (Maybe.withDefault "hal" (Maybe.map (\x -> x.text) (getShapeWithId model (model.selectedElement)))), Html.Events.onInput TextChanged][]]
                     ]
                 ]
-            --, Html.div [Html.Attributes.style [("minWidth", "50%")]] [Html.a [Html.Attributes.href "http://localhost"] [text "hallo" ]]
-            , Html.div [Html.Attributes.style [("minWidth", "50%")]] (createHtml model model.displayedDivId)
+            , Html.div [Html.Attributes.style [("height", "50%"), ("overflow", "scroll")]] (createHtml model model.displayedDivId)
             ]
         ]
 
 
 
-fcArrowToSvg : Model -> FcArrow -> Svg.Svg Msg
+fcArrowToSvg : Model -> FcArrow -> (Svg.Svg Msg, Svg.Svg Msg, Svg.Svg Msg)
 fcArrowToSvg model {id, startPos, endPos, title} = 
     let (startX, startY) = 
         case startPos of
@@ -606,19 +606,52 @@ fcArrowToSvg model {id, startPos, endPos, title} =
                         case el of
                             Nothing -> (0, 0)
                             Just e -> (x + e.x, y + e.y)
+
+        myStrokeWidth = 2
+        l = (sqrt (((endX-startX) ^ 2) + ((endY-startY)^2))) / myStrokeWidth
+        textOrientation = if endX >= startX then "auto" else "auto-start-reverse" 
+        
+        myMarker = marker [Svg.Attributes.id ("arrowHead" ++ toString id), markerWidth (toString (l)), markerHeight "12", overflow "visible", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto"]
+                        [ g []
+                            [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []
+                            , rect [ y "-6", x (toString (-l)), width (toString (l+6)), height "12", Svg.Attributes.style "stroke-width:1;stroke-dasharray:10,10;stroke:rgb(0, 0, 190);fill-opacity:0.0;"] []]]
+                            
+        myMarker1 = marker [Svg.Attributes.id ("arrowCaption" ++ toString id),  markerWidth "300", overflow "visible",  viewBox "0, 0, 600, 120", markerHeight "120", refX "50", refY "0", orient textOrientation]
+                                [ text' [ Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+                                , fontSize (toString myFontSize)
+                                , fontFamily myFontFamily
+                                , x (toString ((fst (getTextDimension title myFontFamily myFontSize))/4))
+                                , y (toString -15)
+                                , fill "green"] [Svg.text title]]
+
     in
-        if endX > startX
-        then 
-            Svg.path [
-                    d ( "M " ++ (toString startX) ++ ", " ++ (toString startY) ++
-                        " L " ++ (toString ((endX-startX)/2+startX)) ++ ", " ++ (toString ((endY-startY)/2+startY)) ++
-                        " L " ++ (toString endX) ++ ", " ++ (toString endY)), markerEnd "url(#arrowHead)", markerMid "url(#arrowCaption)", Svg.Attributes.style "stroke:rgb(255,0,0);stroke-width:2"] []
-        else
-            Svg.path [
-                    d ( "M " ++ (toString endX) ++ ", " ++ (toString endY) ++
-                        " L " ++ (toString ((startX-endX)/2+endX)) ++ ", " ++ (toString ((startY-endY)/2+endY)) ++
-                        " L " ++ (toString startX) ++ ", " ++ (toString startY)), markerStart "url(#arrowHeadRotated)", markerMid "url(#arrowCaptionRotated)", Svg.Attributes.style "stroke:rgb(255,0,0);stroke-width:2"] []
-                          
+        let distance = 50/myStrokeWidth
+            (sx, sy) = (startX + ((endX - startX)) * ((distance/l)), startY + (endY - startY) * ((distance/l)))
+            (ex, ey) =
+                if l <= 2*distance
+                then (sx, sy)
+                else (endX - ((endX - startX)) * ((distance/l)), endY - (endY - startY) * ((distance/l)))
+            t = 
+                Svg.g [Svg.Attributes.cursor "default"] [
+                    Svg.path [
+
+                              d ( "M " ++ (toString startX) ++ ", " ++ (toString startY) ++
+                                " L " ++ (toString ((endX-startX)/2+startX)) ++ ", " ++ (toString ((endY-startY)/2+startY)) ++
+                                " L " ++ (toString endX) ++ ", " ++ (toString endY))
+                             , markerEnd ("url(#arrowHead" ++ toString id ++ ")")
+                             , markerMid ("url(#arrowCaption" ++ toString id ++ ")")
+                             , Svg.Attributes.style ("stroke:rgb(255,0,0);stroke-width:" ++ (toString myStrokeWidth))] [myMarker]
+                    ,
+                    Svg.path [ pointerEvents "all"
+                             , Html.Events.onClick (KeyMsg 65)
+
+                             , d ( "M " ++ (toString sx) ++ ", " ++ (toString sy) ++
+                                " L " ++ (toString (ex)) ++ ", " ++ (toString <|ey))
+                             , Svg.Attributes.style ("stroke:rgb(0,255,0);stroke-width:" ++ (toString <| 14 * myStrokeWidth) ++ ";stroke-opacity:0.0001")] [myMarker]
+                    ]
+            in
+                Debug.log textOrientation
+                (t, myMarker, myMarker1)            
                          
 
 
