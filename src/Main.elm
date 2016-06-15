@@ -122,13 +122,13 @@ init =
             --, ({id=3, shapeType=End, x=150,y=290,text="",title="j23j"})]
         , fcArrows =
             [ ({id=1, startPos= Offset (1, 10, 40), endPos=Offset (2, 50, 5), text="t1", title="1"})
-            --, ({id=2, startPos=Global (190, 50), endPos=Global (800, 500), text="t2", title="ijs2"})
+            , ({id=2, startPos=Global (190, 50), endPos=Global (800, 500), text="t2", title="ijs2"})
             ]
         , debugMsg = ""
         , dragElement=Nothing
         , dragOffsetX=0
         , dragOffsetY=0
-        , selectedElement=Nothing
+        , selectedElement=Just <| Arrow {id=2, startPos=Global (190, 50), endPos=Global (800, 500), text="t2", title="ijs2"}
         , dragArrow=Nothing
         , mainDivOffset={x=0.0, y=0.0}
     }, Cmd.none)
@@ -202,7 +202,7 @@ removeShape model id =
 --                        { ar | startPos = newStartPos, endPos = newEndPos }) model.fcArrows
 --            in
 --                { model | fcShapes=newShapes, fcArrows=newArrows }
---
+
 
 
 
@@ -401,13 +401,10 @@ update msg model =
                 m ! []
 
         UpMsg { areaType, id} ->
-            {model |dragElement=Nothing, dragArrow= moveEndPosTo model.dragArrow (Offset (id, 0, 0))} ! []
+            {model | dragElement=Nothing, dragArrow= moveEndPosTo model.dragArrow (Offset (id, 0, 0))} ! []
         MouseUp lpos ->
             let pos = localToGlobal {x=toFloat lpos.x, y=toFloat lpos.y} model.mainDivOffset
-            in
-                    { model | dragElement=Nothing
-                            , dragArrow=Nothing
-                            , fcArrows = (model.dragArrow
+                newArrow = Debug.log "ar : " (model.dragArrow
                                             |> Maybe.map (\a ->
                                                 case a.endPos of
                                                     Offset (endId, _, _) ->
@@ -418,10 +415,21 @@ update msg model =
                                                             else [{ a | endPos=Offset (endId,pos.x-el.x, pos.y - el.y) }])
                                                         |> Maybe.withDefault []
                                                     _ -> [])
-                                            |> Maybe.withDefault []) ++ model.fcArrows } ! []
+                                            |> Maybe.withDefault [])
+                _ = Debug.log "arrows" (newArrow++model.fcArrows)
+            in
+                    { model | dragElement=Nothing
+                            , fcArrows =  (newArrow ++ model.fcArrows)
+                            , dragArrow=Nothing
+                            --, selectedElement=Nothing
+                                --case (Maybe.withDefault 9888 (Maybe.map (\x -> x.id) (List.head newArrow))) of
+                                    --5 -> Nothing
+                                    --_ -> model.selectedElement
+                                             } ! []
 
         MouseMove lpos ->
             let pos = localToGlobal { x = toFloat lpos.x, y = toFloat lpos.y }  model.mainDivOffset
+                _ = Debug.log "selected " model.selectedElement
             in
             case model.dragElement of
                 Nothing -> model ! []
@@ -430,7 +438,7 @@ update msg model =
                         Inner ->
                             let m = moveElementTo model model.dragElement (pos.x-model.dragOffsetX) (pos.y-model.dragOffsetY)
                             in
-                                m ! []
+                                 m ! []
                         Outer ->
                             (getShapeWithId model.fcShapes id
                             |> Maybe.map (\el -> { model | dragArrow=moveEndPosTo model.dragArrow (Global (pos.x, pos.y))})
@@ -438,16 +446,16 @@ update msg model =
 
 
 removeSelectedElement model = 
-    case model.selectedElement of
-        Nothing -> model
-        Just selectedElement ->
+    model.selectedElement
+    |> Maybe.map (\selectedElement ->
             case selectedElement of
                 Shape shape -> { model | selectedElement=Nothing
                                        , fcShapes=List.filter (\currentShape -> currentShape.id /= shape.id) model.fcShapes
                                }
                 Arrow arrow -> { model | selectedElement=Nothing
                                        , fcArrows=List.filter (\a -> a.id /= arrow.id) model.fcArrows
-                               }
+                               })
+    |> Maybe.withDefault model
 
         
 
@@ -460,6 +468,7 @@ localToGlobal pos offset =
 
 moveElementTo : Model -> Maybe ShapeArea -> Float -> Float -> Model
 moveElementTo model movingElement x y = 
+
     case movingElement of
         Nothing -> {model | debugMsg="not found"}
         Just {areaType, id} ->
@@ -569,9 +578,7 @@ view : Model -> Html Msg
 view model =
     let cur = Maybe.withDefault [] (Maybe.map (\x -> [fcArrowToSvg model x]) model.dragArrow)
         allArrows = cur++(List.map (fcArrowToSvg model) model.fcArrows)
-        (arrowSvgs, arrowHeads, arrowTexts) = List.foldl (\(x,y,z) (xs, ys, zs) ->
-                                                        ((x::xs), (y::ys), (z::zs))
-                                                    ) ([],[],[]) allArrows 
+        (arrowSvgs, arrowHeads) = List.unzip allArrows 
         --_ = Debug.log "test" (arrowTexts)
     in
         Html.div [Html.Attributes.style [("position", "absolute"), ("top", "0px"), ("left", "0px"), ("width", "100%"), ("height", "100%")]]
@@ -579,10 +586,18 @@ view model =
                    , Html.Attributes.tabindex 0
                    , Html.Events.on "keydown" (Html.Events.keyCode |> Json.map (\keyCode -> KeyMsg keyCode))
                    , Html.Events.on "scroll" (Json.succeed (SetScrollPosition "mainEl"))
-                   , Html.Attributes.style [("width", "70%"), ("height", "100%"),  ("overflow", "scroll"), ("backgroundColor", "yellow")]] [
+                   , Html.Attributes.style [ ("width", "70%")
+                                            , ("height", "100%")
+                                            , ("overflow", "scroll")
+                                            , ("-ms-user-select", "none")
+                                            , ("-o-user-select", "none")
+                                            , ("-moz-user-select", "none")
+                                            , ("user-select", "none")
+                                            , ("-webkit-user-select", "none")
+                                            , ("backgroundColor", "yellow")]] [
             svg [ Svg.Attributes.cursor "default", Svg.Attributes.style "background-color:lightblue", viewBox "0 0 8500 8500", width "8500", height "8500", pointerEvents "none"]
                 ([defs []
-                    (arrowHeads ++ arrowTexts)
+                    (arrowHeads)
                 ] ++
                 (List.map (fcShapeToSvg model) model.fcShapes++
                 arrowSvgs
@@ -620,29 +635,21 @@ view model =
                     ]
                 ]
             , Html.div [Html.Attributes.style [("height", "50%"), ("overflow", "scroll")]] (createHtml model (Maybe.withDefault 1 (Maybe.map (\x -> getId x) model.selectedElement)))
-            , Html.div [Html.Attributes.style[ ("position", "absolute")
-                                               , ("bottom", "0px")
-                                               , ("left", "0px")
-                                               , ("width", "100%")
-                                               , ("height", "300px")]
-                        ]
-                        [Html.text (List.foldl (\a state -> state ++ "(" ++ toString a.id ++ ", " ++ a.title ++ "), ") "" (model.fcArrows))
-              ]
             ]
         ]
 
 
 
-fcArrowToSvg : Model -> FcArrow -> (Svg.Svg Msg, Svg.Svg Msg, Svg.Svg Msg)
+fcArrowToSvg : Model -> FcArrow -> (Svg.Svg Msg, Svg.Svg Msg)
 fcArrowToSvg model fcArrow = 
-    let (tartX, tartY) = 
+    let (startX, startY) = 
             case fcArrow.startPos of
                 Global (x, y) -> (x, y)
                 Offset (startId, x, y) ->
                     getShapeWithId model.fcShapes startId
                     |> Maybe.map (\e -> (x+e.x, y+e.y))
                     |> Maybe.withDefault (0, 0)
-        (ndX, ndY) = 
+        (endX, endY) = 
             case fcArrow.endPos of
                 Global (x, y) -> (x, y)
                 Offset (endId, x, y) ->
@@ -650,11 +657,12 @@ fcArrowToSvg model fcArrow =
                     |> Maybe.map (\e -> (x+e.x, y+e.y))
                     |> Maybe.withDefault (0, 0)
 
-        (startX, startY, endX, endY, myMarkerAttribute) = 
-            if(tartX <= ndX || True)
-            then (tartX, tartY, ndX, ndY, markerEnd ("url(#arrowHead" ++ toString fcArrow.id ++ ")"))
-            else (ndX, ndY, tartX, tartY, markerEnd ("url(#arrowHead" ++ toString fcArrow.id ++ ")"))
-        myStrokeWidth = 2
+        myStrokeWidth = 1
+        (strokeColor, mySelectStrokeWidth) =
+            case model.selectedElement of
+                Just (Arrow arrow) -> if arrow.id == fcArrow.id then ("red", 1) else ("lightblue", 0)
+                _ -> ("lightblue", 0)
+                
         l = Basics.max 1 (sqrt (((endX-startX) ^ 2) + ((endY-startY)^2))) / myStrokeWidth
         textOrientation = "auto" 
 
@@ -678,9 +686,9 @@ fcArrowToSvg model fcArrow =
                                              , x (toString (-l))
                                              , width (toString (l+6))
                                              , height "12"
-                                             , Svg.Attributes.style "stroke-width:1;stroke-dasharray:10,10;stroke:rgb(0, 0, 190);fill-opacity:0.0;"] []
+                                             , Svg.Attributes.style <| "stroke-width:" ++ toString mySelectStrokeWidth ++ ";stroke-dasharray:10,10;stroke:rgb(0, 0, 190);fill-opacity:0.0;"] []
 
-                                , text' [ Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+                                , text' [ Svg.Attributes.style "-ms-user-select: none; o-user-select: none; user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                                 , transform mt1
                                 , fontSize (toString myFontSize)
                                 , fontFamily myFontFamily
@@ -691,13 +699,6 @@ fcArrowToSvg model fcArrow =
                               ]
                           ]
                             
-        myMarker1 = marker []
-                                [ text' [ Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
-                                , fontSize (toString myFontSize)
-                                , fontFamily myFontFamily
-                                , x (toString (l/2-(fst (getTextDimension fcArrow.title myFontFamily myFontSize))/4))
-                                , y (toString -15)
-                                , fill "blue"] [Svg.text fcArrow.title]]
 
     in
         let distance = 50/myStrokeWidth
@@ -713,19 +714,18 @@ fcArrowToSvg model fcArrow =
                               d ( "M " ++ (toString startX) ++ ", " ++ (toString startY) ++
                                 " L " ++ (toString ((endX-startX)/2+startX)) ++ ", " ++ (toString ((endY-startY)/2+startY)) ++
                                 " L " ++ (toString endX) ++ ", " ++ (toString endY))
-                              , myMarkerAttribute
-                             --, markerStart ("url(#arrowCaption" ++ toString fcArrow.id ++ ")")
+                             , markerEnd ("url(#arrowHead" ++ toString fcArrow.id ++ ")")
                              , Svg.Attributes.style ("stroke:rgb(255,0,0);stroke-width:" ++ (toString myStrokeWidth))] []
                     ,
                     Svg.path [ pointerEvents "all"
-                             , Html.Events.onClick (KeyMsg 65)
+                             , Html.Events.onClick (SelectArrowElement fcArrow.id)
 
                              , d ( "M " ++ (toString sx) ++ ", " ++ (toString sy) ++
                                 " L " ++ (toString (ex)) ++ ", " ++ (toString <|ey))
                              , Svg.Attributes.style ("stroke:rgb(0,255,0);stroke-width:" ++ (toString <| 14 * myStrokeWidth) ++ ";stroke-opacity:0.0001")] []
                     ]
             in
-                (t, myMarker, myMarker1)            
+                (t, myMarker)
                          
 
 
@@ -733,7 +733,10 @@ fcShapeToSvg : Model -> FcShape -> Svg.Svg Msg
 fcShapeToSvg model fcShape = 
     let outerColor = "#FFF9CE"
         innerColor = "blue"
-        strokeColor = if model.selectedElement == Just (Shape fcShape) then "red" else outerColor
+        strokeColor =
+            case model.selectedElement of
+                Just (Shape shape) -> if shape.id == fcShape.id then "red" else outerColor
+                _ -> outerColor
         textColor = "red"
     in
     case fcShape.shapeType of
@@ -754,7 +757,9 @@ fcShapeToSvg model fcShape =
                          , height <| toString outerShapeHeight
                          ,  rx "30"
                          , ry "30"
+                         , Svg.Attributes.style "-ms-user-select: none; -o-user-select: none; user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                          , stroke strokeColor
+                         , strokeWidth "1"
                          , strokeDasharray "10,10"
                          , fill outerColor
                          ] [],
@@ -762,6 +767,7 @@ fcShapeToSvg model fcShape =
                          , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
                          , x (toString (fcShape.x + outerPadding))
                          , y (toString (fcShape.y + outerPadding))
+                          , Svg.Attributes.style "-ms-user-select: none; -o-user-select: none; user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                          , width <| toString innerShapeWidth
                          , height <| toString innerShapeHeight
                          ,  rx "25"
@@ -770,7 +776,11 @@ fcShapeToSvg model fcShape =
                     text' [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
                           , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
                           , pointerEvents "none"
-                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+                          , Svg.Attributes.style "-ms-user-select: none; -o-user-select: none; user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+
+
+
+
                           , fontFamily myFontFamily
                           ,  fontSize (toString myFontSize)
                           ,  Svg.Attributes.cursor "default"
@@ -790,6 +800,7 @@ fcShapeToSvg model fcShape =
                          , x (toString fcShape.x)
                          , y (toString <| fcShape.y)
                          , width <| toString outerShapeWidth
+                         , Svg.Attributes.style "-ms-user-select: none; -o-user-select: none; user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                          , height <| toString outerShapeHeight
                          , stroke strokeColor
                          , strokeDasharray "10,10"
@@ -798,12 +809,13 @@ fcShapeToSvg model fcShape =
                           , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
                          , x (toString (fcShape.x + outerPadding))
                          , y (toString (fcShape.y + outerPadding))
+                          , Svg.Attributes.style "-ms-user-select: none; -o-user-select: none; user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                          , width <| toString innerShapeWidth
                          , height <| toString innerShapeHeight
                          , fill innerColor ] [],
                     text' [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
                           , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
-                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+                          , Svg.Attributes.style "-ms-user-select: none; -o-user-select: none; user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                           , fontFamily myFontFamily
                           ,  fontSize (toString myFontSize)
                           ,  Svg.Attributes.cursor "default"
@@ -828,6 +840,7 @@ fcShapeToSvg model fcShape =
                          ,  rx "30"
                          , ry "30"
                          , stroke strokeColor
+                         , Svg.Attributes.style "-ms-user-select: none; -o-user-select: none; user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                          , strokeDasharray "10,10"
                          , fill outerColor
                          ] [],
@@ -837,13 +850,14 @@ fcShapeToSvg model fcShape =
                          , y (toString (fcShape.y + outerPadding))
                          , width <| toString innerShapeWidth
                          , height <| toString innerShapeHeight
+                         , Svg.Attributes.style "-ms-user-select: none; -o-user-select: none; user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                          ,  rx "25"
                          , ry "25"
                          , fill innerColor ] [],
                     text' [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
                           , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
                           , pointerEvents "none"
-                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+                          , Svg.Attributes.style "-ms-user-select: none; -o-user-select: none; user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                           , fontFamily myFontFamily
                           ,  fontSize (toString myFontSize)
                           ,  Svg.Attributes.cursor "default"
@@ -866,7 +880,7 @@ fcShapeToSvg model fcShape =
                                 ++ (toString (fcShape.x + outerShapeWidth/2)) ++ "," ++ (toString fcShape.y) ++ " "
                                 ++ (toString (fcShape.x + outerShapeWidth)) ++ "," ++ (toString (fcShape.y + outerShapeHeight/2)) ++ " "
                                 ++ (toString <| fcShape.x + outerShapeWidth / 2) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " ")
-
+                          , Svg.Attributes.style "-ms-user-select: none; -o-user-select: none; user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                          , stroke strokeColor
                          , strokeDasharray "10,10"
                          , fill outerColor ] [],
@@ -875,13 +889,13 @@ fcShapeToSvg model fcShape =
                                 ++ (toString (innerStartX + innerShapeWidth/2)) ++ "," ++ (toString <| innerStartY) ++ " "
                                 ++ (toString (innerStartX + innerShapeWidth)) ++ "," ++ (toString (innerStartY + innerShapeHeight/2)) ++ " "
                                 ++ (toString <| innerStartX + innerShapeWidth / 2) ++ "," ++ (toString (innerStartY + innerShapeHeight)) ++ " ")
-
+                          , Svg.Attributes.style "-ms-user-select: none; -o-user-select: none; user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                          , fill innerColor] [],
                     text' [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
                           , fontFamily myFontFamily
                           ,  fontSize (toString myFontSize)
                           ,  Svg.Attributes.cursor "default"
-                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+                          , Svg.Attributes.style "-ms-user-select: none; -o-user-select: none; user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                           , x (toString (fcShape.x + outerPadding + innerPadding))
                           , y (toString (fcShape.y+outerPadding + innerPadding + textHeight / 2 + myFontSize / 3))
                           , fill textColor] [Svg.text fcShape.title]]
