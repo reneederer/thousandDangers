@@ -18,7 +18,7 @@ import Json.Decode exposing ((:=))
 import String exposing (length)
 import Char exposing (toCode, fromCode)
 import Maybe exposing (withDefault)
-import List exposing (head)
+import List
 import Task exposing (..)
 import String
 import List
@@ -65,43 +65,10 @@ type alias FcArrow =
     { id : Id
     , startPos : FcPos
     , endPos : FcPos
+    , text : String
     , title : String }
 
 type alias Id = Int
-
-createStartElement :Id ->  Float -> Float -> FcShape
-createStartElement id x y = 
-        { id = id
-        , shapeType = Start
-        , x = x
-        , y = y
-        , text = "Start"
-        , title = toString id
-        }
-
-createEndElement : Id -> Float -> Float -> FcShape
-createEndElement id x y = 
-        { id = id
-        , shapeType = End
-        , x = x
-        , y = y
-        , text = toString id
-        , title = "Ende"
-        }
-
-createConditionElement : Id -> Float -> Float -> FcShape
-createConditionElement id x y =
-        { id = id
-        , shapeType = Condition
-        , x = x
-        , y = y
-        , text = toString id
-        , title = "Mein Titel"
-        }
-
-type FcElement = 
-      ShapeElement FcShape
-    | ArrowElement FcArrow
 
 type ShapeAreaType = 
       Outer
@@ -122,9 +89,13 @@ type Msg =
     | HttpFailure String
     | TitleChanged String
     | TextChanged String
-    | DisplayDiv Int
     | SetScrollPosition String
     | ScrollPositionTold Position
+    | SelectArrowElement Id
+
+type FcElement = 
+      Arrow FcArrow
+    | Shape FcShape
 
 -- MODEL
 
@@ -136,9 +107,8 @@ type alias Model =
     , dragElement : Maybe ShapeArea
     , dragOffsetX : Float
     , dragOffsetY : Float
-    , selectedElement : Id
-    , currentLine : Maybe (FcPos, FcPos)
-    , displayedDivId : Int
+    , selectedElement : Maybe FcElement
+    , dragArrow : Maybe FcArrow
     , mainDivOffset : Position
     }
 
@@ -151,15 +121,15 @@ init =
             , ({id=2, shapeType=Action, x=40,y=490,text="def",title="tre2"})]
             --, ({id=3, shapeType=End, x=150,y=290,text="",title="j23j"})]
         , fcArrows =
-            [ ({id=1, startPos= Offset (1, 10, 40), endPos=Offset (2, 50, 5), title="1"})
-            , ({id=2, startPos=Global (190, 50), endPos=Global (800, 500), title="ijs2"})]
+            [ ({id=1, startPos= Offset (1, 10, 40), endPos=Offset (2, 50, 5), text="t1", title="1"})
+            --, ({id=2, startPos=Global (190, 50), endPos=Global (800, 500), text="t2", title="ijs2"})
+            ]
         , debugMsg = ""
         , dragElement=Nothing
         , dragOffsetX=0
         , dragOffsetY=0
-        , selectedElement=1
-        , currentLine=Nothing
-        , displayedDivId=1
+        , selectedElement=Nothing
+        , dragArrow=Nothing
         , mainDivOffset={x=0.0, y=0.0}
     }, Cmd.none)
 
@@ -167,39 +137,72 @@ init =
 
 
 
-getShapeWithId : Model -> Id -> Maybe FcShape
-getShapeWithId model id = 
-    head <| List.filter (\el -> el.id == id) model.fcShapes
+getShapeWithId : List FcShape -> Id -> Maybe FcShape
+getShapeWithId l id = 
+    List.head <| List.filter (\el -> el.id == id) l
 
+getArrowWithId : List FcArrow -> Id -> Maybe FcArrow
+getArrowWithId l id = 
+    List.head <| List.filter (\el -> el.id == id) l
     
 
 findFreeId : List {a | id:Id} -> Id
 findFreeId l = 
     List.foldl (\el state -> if el.id >= state then el.id + 1 else state) 1 l
 
+setTitle : FcElement -> String -> FcElement
+setTitle fcElement title = 
+    case fcElement of
+        Shape shape -> Shape { shape | title = title } 
+        Arrow arrow -> Arrow { arrow | title = title } 
+
+getTitle : FcElement -> String
+getTitle fcElement = 
+    case fcElement of
+        Shape shape -> shape.title
+        Arrow arrow -> arrow.title
+
+setText : FcElement -> String -> FcElement
+setText fcElement text = 
+    case fcElement of
+        Shape shape -> Shape { shape | text = text } 
+        Arrow arrow -> Arrow { arrow | text = text } 
+
+getText : FcElement -> String
+getText fcElement = 
+    case fcElement of
+        Shape shape -> shape.text
+        Arrow arrow -> arrow.text
+
+getId : FcElement -> Id
+getId fcElement = 
+    case fcElement of
+        Shape shape -> shape.id
+        Arrow arrow -> arrow.id
 
 removeShape : Model -> Id -> Model
 removeShape model id =
-    let mshape = getShapeWithId model id
-    in
-    case mshape of
-        Nothing -> model
-        Just shape ->
-            let newShapes = List.foldr (\el state -> if el.id == id then state else (el::state)) [] model.fcShapes
-                newArrows = List.map (\ar ->
-                    let newStartPos = 
-                        case ar.startPos of
-                            Offset (id, x, y) -> if (id == shape.id) then Global (x + shape.x, y + shape.y) else ar.startPos
-                            _ -> ar.startPos
-                        newEndPos = 
-                        case ar.endPos of
-                            Offset (id, x, y) -> if (id == shape.id) then Global (x + shape.x, y + shape.y) else ar.endPos
-                            _ -> ar.endPos
-                    in
-                        { ar | startPos = newStartPos, endPos = newEndPos }) model.fcArrows
-            in
-                { model | fcShapes=newShapes, fcArrows=newArrows }
-
+    model
+--    let mshape = getElementWithId model id
+--    in
+--    case mshape of
+--        Nothing -> model
+--        Just shape ->
+--            let newShapes = List.foldr (\el state -> if el.id == id then state else (el::state)) [] model.fcShapes
+--                newArrows = List.map (\ar ->
+--                    let newStartPos = 
+--                        case ar.startPos of
+--                            Offset (id, x, y) -> if (id == shape.id) then Global (x + shape.x, y + shape.y) else ar.startPos
+--                            _ -> ar.startPos
+--                        newEndPos = 
+--                        case ar.endPos of
+--                            Offset (id, x, y) -> if (id == shape.id) then Global (x + shape.x, y + shape.y) else ar.endPos
+--                            _ -> ar.endPos
+--                    in
+--                        { ar | startPos = newStartPos, endPos = newEndPos }) model.fcArrows
+--            in
+--                { model | fcShapes=newShapes, fcArrows=newArrows }
+--
 
 
 
@@ -235,6 +238,7 @@ decodeElements =
                     case destination_id of
                         Nothing -> Global (destination_offset_x, destination_offset_y)
                         Just id -> Offset (id, destination_offset_x, destination_offset_y)
+                , text=""
                 , title=title})
                 ("id" := Json.int)
                 ("source_id" := Json.oneOf [Json.null Nothing, Json.map Just Json.int])
@@ -303,9 +307,17 @@ saveElements model =
 
 
 
+moveStartPosTo : Maybe FcArrow -> FcPos -> Maybe FcArrow
+moveStartPosTo fcArrow fcPos = 
+    fcArrow
+    |> Maybe.map (\arrow -> { arrow | startPos = fcPos })
 
 
 
+moveEndPosTo : Maybe FcArrow -> FcPos -> Maybe FcArrow
+moveEndPosTo fcArrow fcPos = 
+    fcArrow
+    |> Maybe.map (\arrow -> { arrow | endPos = fcPos })
 
 
 
@@ -314,89 +326,100 @@ update msg model =
     case msg of
         DownMsg { areaType, id} ->
             case areaType of
-                Inner -> {model | dragElement=(Just {areaType=areaType, id=id}), displayedDivId=id, selectedElement=id, currentLine=Nothing } ! []
-                Outer -> {model | dragElement=(Just {areaType=areaType, id=id}), displayedDivId=id, selectedElement=id, currentLine=Just (Offset (id, 0, 0), Offset (id, 0, 0)) } ! []
+                Inner -> { model | dragElement=(Just {areaType=areaType, id=id})
+                                , selectedElement=Maybe.map Shape (getShapeWithId model.fcShapes id)
+                                , dragArrow=Nothing
+                         } ! []
+                Outer -> { model | dragElement=(Just {areaType=areaType, id=id})
+                                , selectedElement=Maybe.map Shape (getShapeWithId model.fcShapes id)
+                                , dragArrow=Just { id=findFreeId model.fcArrows
+                                                   , startPos=Offset (id, 0, 0)
+                                                   , endPos=Offset (id, 0, 0)
+                                                   , text="dfas"
+                                                   , title="adsdsfa" }
+                         } ! []
         MouseDown lpos->
             let pos = localToGlobal {x=toFloat lpos.x, y=toFloat lpos.y} model.mainDivOffset 
                 id = 
                     case model.dragElement of
                         Nothing -> Nothing
                         (Just  ({areaType, id})) -> Just id
-                shapePos = Maybe.map (getShapeWithId model) id
+                shapePos = Maybe.map (getShapeWithId model.fcShapes) id
             in
                 case shapePos of
                     Just (Just el) ->
                         let offsetX=(pos.x)-el.x
                             offsetY=(pos.y)-el.y
                         in
-                            Debug.log "mousedown!!!"
                             { model | dragOffsetX=offsetX
                                     , dragOffsetY=offsetY
-                                    , currentLine=Maybe.map (\(s, e) -> 
-                                                        case s of 
-                                                            Offset (id, x, y) -> (Offset (id, offsetX, offsetY), Offset (id, offsetX, offsetY))
-                                                            _ -> (s, e))
-                                         model.currentLine } ! []
+                                    , dragArrow=Maybe.map (\line -> 
+                                                        case line.startPos of 
+                                                            Offset (id, x, y) -> {line | startPos=Offset (id, offsetX, offsetY)
+                                                                                       , endPos=Offset (id, offsetX, offsetY)}
+                                                            _ -> line)
+                                         model.dragArrow } ! []
                     _ ->
-                        --Debug.log "soll das so sein?"
                         model ! []
         KeyMsg code ->
             case code of 
-                65 -> {model | debugMsg = "a pressed", fcShapes = model.fcShapes ++ [ (createStartElement (findFreeId model.fcShapes) 400.0 400.0)]} ! []
+                65 -> {model | debugMsg = "a pressed", fcShapes = model.fcShapes ++ [ { id=findFreeId model.fcShapes
+                                                                                      , shapeType=Start
+                                                                                      , x=400.0
+                                                                                      , y=400.0
+                                                                                      , text="Start"
+                                                                                      , title="Start"
+                                                                                    } ]} ! []
                 66 ->
                     let x = loadElements |> perform (\a -> HttpFailure (toString a)) (\a -> HttpSuccess a)
                     in
-                        Debug.log "b gedrueckt"
                         {model | debugMsg="b" ++ toString x} ! [x]
                 67 ->
                     let x = (saveElements model |> perform (\a -> HttpFailure (toString a)) (\a -> HttpFailure (toString a)))
                     in
                         {model | debugMsg="jkas"} ! [x]
-                46 -> (removeShape model model.selectedElement) ! []
+                46 -> (removeSelectedElement model) ! []
                 c -> { model | debugMsg="kein event" ++ (toString c) } ! []
         SetScrollPosition s -> 
             model ! [getScrollPosition s]
         ScrollPositionTold scrollOffset ->
-            Debug.log (toString scrollOffset.x)
             { model | mainDivOffset = scrollOffset } ! []
+        SelectArrowElement id ->
+            { model | selectedElement=Maybe.map Arrow (getArrowWithId model.fcArrows id) } ! []
         HttpSuccess s -> {model | fcShapes=(fst s), fcArrows=(snd s)} ! []
         HttpFailure s -> 
-            Debug.log s
             { model | debugMsg="HttpFailure " ++ s } ! []
         TitleChanged s ->
-            let m = { model | fcShapes = List.map (\el -> if el.id == model.selectedElement then {el | title = s} else el) model.fcShapes}
+            --let m = { model | fcShapes = t.map (\el -> if Just el == model.selectedElement then (setTitle el s) else el) model.fcShapes}
+            let m = model
             in
                 m ! []
         TextChanged s ->
-            let m = { model | fcShapes = List.map (\el -> if el.id == model.selectedElement then {el | text = s} else el) model.fcShapes}
+            let m = model
+            --let m = { model | fcShapes = List.map (\el -> if Just el == model.selectedElement then {el | text = s} else el) model.fcShapes}
             in
                 m ! []
 
         UpMsg { areaType, id} ->
-            {model |dragElement=Nothing, currentLine=Maybe.map (\l -> (fst l, Offset (id, 0, 0))) model.currentLine } ! []
-        DisplayDiv id ->
-            { model | displayedDivId=id } ! []
+            {model |dragElement=Nothing, dragArrow= moveEndPosTo model.dragArrow (Offset (id, 0, 0))} ! []
         MouseUp lpos ->
             let pos = localToGlobal {x=toFloat lpos.x, y=toFloat lpos.y} model.mainDivOffset
-                arrow = Maybe.map (\l -> { id=findFreeId model.fcShapes, startPos=(fst l), endPos=(snd l) }) model.currentLine
-                h = case arrow of 
-                    Nothing -> []
-                    Just a ->
-                        case a.endPos of
-                            Offset (id, _, _) ->
-                                let element = getShapeWithId model id
-                                    (offsetX, offsetY) = 
-                                        case element of
-                                            Nothing -> (0.0, 0.0)
-                                            Just el -> (pos.x - el.x, pos.y - el.y)
-                                    elid = findFreeId model.fcArrows
-                                in
-                                    if (isSameElement a.startPos a.endPos) then [] else [{id=elid, startPos=a.startPos, endPos=Offset (id, offsetX, offsetY), title=toString elid}]
-                            _ -> []
             in
-                let newModel = {model | dragElement=Nothing, fcArrows=(h++model.fcArrows), currentLine=Nothing }
-                in 
-                    newModel ! []
+                    { model | dragElement=Nothing
+                            , dragArrow=Nothing
+                            , fcArrows = (model.dragArrow
+                                            |> Maybe.map (\a ->
+                                                case a.endPos of
+                                                    Offset (endId, _, _) ->
+                                                        getShapeWithId model.fcShapes endId
+                                                        |> Maybe.map (\el ->
+                                                            if isSameElement a.startPos a.endPos
+                                                            then []
+                                                            else [{ a | endPos=Offset (endId,pos.x-el.x, pos.y - el.y) }])
+                                                        |> Maybe.withDefault []
+                                                    _ -> [])
+                                            |> Maybe.withDefault []) ++ model.fcArrows } ! []
+
         MouseMove lpos ->
             let pos = localToGlobal { x = toFloat lpos.x, y = toFloat lpos.y }  model.mainDivOffset
             in
@@ -409,14 +432,25 @@ update msg model =
                             in
                                 m ! []
                         Outer ->
-                            let element = getShapeWithId model id
-                                m = 
-                                    case element of
-                                        Nothing -> model
-                                        Just el -> 
-                                            { model | currentLine=(Maybe.map (\(startPos, _) -> (startPos, Global (pos.x, pos.y))) model.currentLine)}
-                            in
-                                m ! []
+                            (getShapeWithId model.fcShapes id
+                            |> Maybe.map (\el -> { model | dragArrow=moveEndPosTo model.dragArrow (Global (pos.x, pos.y))})
+                            |> Maybe.withDefault model) ! []
+
+
+removeSelectedElement model = 
+    case model.selectedElement of
+        Nothing -> model
+        Just selectedElement ->
+            case selectedElement of
+                Shape shape -> { model | selectedElement=Nothing
+                                       , fcShapes=List.filter (\currentShape -> currentShape.id /= shape.id) model.fcShapes
+                               }
+                Arrow arrow -> { model | selectedElement=Nothing
+                                       , fcArrows=List.filter (\a -> a.id /= arrow.id) model.fcArrows
+                               }
+
+        
+
 
 localToGlobal : Position -> Position -> Position
 localToGlobal pos offset = 
@@ -456,7 +490,6 @@ port getScrollPosition : String -> Cmd msg
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    --Sub.batch [ Mouse.moves MouseMove, Mouse.ups MouseUp]
     Sub.batch [ scrollPositionTold ScrollPositionTold
               , Mouse.moves MouseMove
               , Mouse.ups MouseUp
@@ -483,7 +516,7 @@ createHtml model id =
 
 createHtml1 : Model -> Id -> Int -> List (Html Msg)
 createHtml1 model id tries =
-    let mshape = getShapeWithId model id
+    let mshape = getShapeWithId model.fcShapes id
     in
         if tries == 1000 then []
         else
@@ -505,14 +538,14 @@ createHtml1 model id tries =
                                 (\el state ->
                                     case el.endPos of
                                         Offset (endId, _, _) ->
-                                            Html.p [] [Html.a [Html.Attributes.href "#", Html.Events.onClick (DisplayDiv endId)] [Html.text el.title]]::state
+                                            Html.p [] [Html.a [Html.Attributes.href "#", Html.Events.onClick (SelectArrowElement endId)] [Html.text el.title]]::state
                                         _ -> state
                                 ) [] arrows
                             )
                         _ -> 
                             (Html.p
                                 [Html.Attributes.id (toString id)] [text shape.text])::
-                            (createHtml1 model (Maybe.withDefault -1 (head newIds)) (tries+1))
+                            (createHtml1 model (Maybe.withDefault -1 (List.head newIds)) (tries+1))
 
 
 getStartShapeId : FcArrow -> Maybe Id
@@ -534,13 +567,12 @@ getEndShapeId arr =
 
 view : Model -> Html Msg
 view model =
-    let cur = 
-        case model.currentLine of
-            Nothing -> []
-            Just (startPos, endPos)-> [(fcArrowToSvg model {id=-1, startPos=startPos, endPos=endPos, title="no title"})]
+    let cur = Maybe.withDefault [] (Maybe.map (\x -> [fcArrowToSvg model x]) model.dragArrow)
+        allArrows = cur++(List.map (fcArrowToSvg model) model.fcArrows)
         (arrowSvgs, arrowHeads, arrowTexts) = List.foldl (\(x,y,z) (xs, ys, zs) ->
                                                         ((x::xs), (y::ys), (z::zs))
-                                                    ) ([],[],[])  (cur++(List.map (fcArrowToSvg model) model.fcArrows))
+                                                    ) ([],[],[]) allArrows 
+        --_ = Debug.log "test" (arrowTexts)
     in
         Html.div [Html.Attributes.style [("position", "absolute"), ("top", "0px"), ("left", "0px"), ("width", "100%"), ("height", "100%")]]
         [ Html.div [ Html.Attributes.id "mainEl"
@@ -549,7 +581,7 @@ view model =
                    , Html.Events.on "scroll" (Json.succeed (SetScrollPosition "mainEl"))
                    , Html.Attributes.style [("width", "70%"), ("height", "100%"),  ("overflow", "scroll"), ("backgroundColor", "yellow")]] [
             svg [ Svg.Attributes.cursor "default", Svg.Attributes.style "background-color:lightblue", viewBox "0 0 8500 8500", width "8500", height "8500", pointerEvents "none"]
-                ([defs [pointerEvents "all"]
+                ([defs []
                     (arrowHeads ++ arrowTexts)
                 ] ++
                 (List.map (fcShapeToSvg model) model.fcShapes++
@@ -572,57 +604,100 @@ view model =
                 [ Html.tr []
                     [ Html.td []
                         [ text "Titel"
-                        , Html.input [ Html.Attributes.value (Maybe.withDefault "hal" (Maybe.map (\x -> x.title) (getShapeWithId model (model.selectedElement)))), Html.Events.onInput TitleChanged][]]
+                        , Html.input [ Html.Attributes.value (Maybe.withDefault "" (Maybe.map getTitle model.selectedElement))
+                                     , Html.Events.onInput TitleChanged
+                                     ][]
+                        ]
                     ]
                 , Html.tr []
                     [ Html.td []
                         [ text "Text"
-                        , Html.textarea [ Html.Attributes.rows 20, Html.Attributes.style [("width", "70%")], Html.Attributes.value (Maybe.withDefault "hal" (Maybe.map (\x -> x.text) (getShapeWithId model (model.selectedElement)))), Html.Events.onInput TextChanged][]]
+                        , Html.textarea [
+                                            Html.Attributes.rows 20,
+                                            Html.Attributes.style [("width", "70%")],
+                                            Html.Attributes.value (Maybe.withDefault "" (Maybe.map getText model.selectedElement)),
+                        Html.Events.onInput TextChanged][]]
                     ]
                 ]
-            , Html.div [Html.Attributes.style [("height", "50%"), ("overflow", "scroll")]] (createHtml model model.displayedDivId)
+            , Html.div [Html.Attributes.style [("height", "50%"), ("overflow", "scroll")]] (createHtml model (Maybe.withDefault 1 (Maybe.map (\x -> getId x) model.selectedElement)))
+            , Html.div [Html.Attributes.style[ ("position", "absolute")
+                                               , ("bottom", "0px")
+                                               , ("left", "0px")
+                                               , ("width", "100%")
+                                               , ("height", "300px")]
+                        ]
+                        [Html.text (List.foldl (\a state -> state ++ "(" ++ toString a.id ++ ", " ++ a.title ++ "), ") "" (model.fcArrows))
+              ]
             ]
         ]
 
 
 
 fcArrowToSvg : Model -> FcArrow -> (Svg.Svg Msg, Svg.Svg Msg, Svg.Svg Msg)
-fcArrowToSvg model {id, startPos, endPos, title} = 
-    let (startX, startY) = 
-        case startPos of
-            Global (x, y) -> (x, y)
-            Offset (id, x, y) ->
-                let el = getShapeWithId model id
-                in
-                    case el of
-                        Nothing -> (0, 0)
-                        Just e -> (x + e.x, y + e.y)
-        (endX, endY) = 
-            case endPos of
+fcArrowToSvg model fcArrow = 
+    let (tartX, tartY) = 
+            case fcArrow.startPos of
                 Global (x, y) -> (x, y)
-                Offset (id, x, y) ->
-                    let el = getShapeWithId model id
-                    in
-                        case el of
-                            Nothing -> (0, 0)
-                            Just e -> (x + e.x, y + e.y)
+                Offset (startId, x, y) ->
+                    getShapeWithId model.fcShapes startId
+                    |> Maybe.map (\e -> (x+e.x, y+e.y))
+                    |> Maybe.withDefault (0, 0)
+        (ndX, ndY) = 
+            case fcArrow.endPos of
+                Global (x, y) -> (x, y)
+                Offset (endId, x, y) ->
+                    getShapeWithId model.fcShapes endId
+                    |> Maybe.map (\e -> (x+e.x, y+e.y))
+                    |> Maybe.withDefault (0, 0)
 
+        (startX, startY, endX, endY, myMarkerAttribute) = 
+            if(tartX <= ndX || True)
+            then (tartX, tartY, ndX, ndY, markerEnd ("url(#arrowHead" ++ toString fcArrow.id ++ ")"))
+            else (ndX, ndY, tartX, tartY, markerEnd ("url(#arrowHead" ++ toString fcArrow.id ++ ")"))
         myStrokeWidth = 2
-        l = (sqrt (((endX-startX) ^ 2) + ((endY-startY)^2))) / myStrokeWidth
-        textOrientation = if endX >= startX then "auto" else "auto-start-reverse" 
-        
-        myMarker = marker [Svg.Attributes.id ("arrowHead" ++ toString id), markerWidth (toString (l)), markerHeight "12", overflow "visible", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto"]
-                        [ g []
-                            [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []
-                            , rect [ y "-6", x (toString (-l)), width (toString (l+6)), height "12", Svg.Attributes.style "stroke-width:1;stroke-dasharray:10,10;stroke:rgb(0, 0, 190);fill-opacity:0.0;"] []]]
+        l = Basics.max 1 (sqrt (((endX-startX) ^ 2) + ((endY-startY)^2))) / myStrokeWidth
+        textOrientation = "auto" 
+
+        mt1 = 
+            if endX <= startX
+            then "scale(-1,-1) translate(" ++ (toString <| 2*l/2) ++ ", 0)"
+            else "translate(0, 0)"
+
+        myMarker = marker [Svg.Attributes.id ( "arrowHead" ++ toString fcArrow.id)
+                                             , markerWidth (toString l)
+                                             , markerHeight "12"
+                                             , overflow "visible"
+                                             , viewBox "-6, -6, 12, 12"
+                                             , refX "5"
+                                             , refY "0"
+                                             , orient textOrientation
+                          ]
+                          [ g []
+                              [ polygon [ points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []
+                                      , rect [ y "-6"
+                                             , x (toString (-l))
+                                             , width (toString (l+6))
+                                             , height "12"
+                                             , Svg.Attributes.style "stroke-width:1;stroke-dasharray:10,10;stroke:rgb(0, 0, 190);fill-opacity:0.0;"] []
+
+                                , text' [ Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+                                , transform mt1
+                                , fontSize (toString myFontSize)
+                                , fontFamily myFontFamily
+                                , x (toString (-l/2-(fst (getTextDimension fcArrow.title myFontFamily myFontSize))/2))
+                                , y (toString -15)
+                                , fill "blue"]
+                                [Svg.text fcArrow.title]
+                              ]
+                          ]
                             
-        myMarker1 = marker [Svg.Attributes.id ("arrowCaption" ++ toString id),  markerWidth "300", overflow "visible",  viewBox "0, 0, 600, 120", markerHeight "120", refX "50", refY "0", orient textOrientation]
+        myMarker1 = marker []
                                 [ text' [ Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
                                 , fontSize (toString myFontSize)
                                 , fontFamily myFontFamily
-                                , x (toString ((fst (getTextDimension title myFontFamily myFontSize))/4))
+                                , x (toString (l/2-(fst (getTextDimension fcArrow.title myFontFamily myFontSize))/4))
                                 , y (toString -15)
-                                , fill "green"] [Svg.text title]]
+                                , fill "blue"] [Svg.text fcArrow.title]]
 
     in
         let distance = 50/myStrokeWidth
@@ -638,19 +713,18 @@ fcArrowToSvg model {id, startPos, endPos, title} =
                               d ( "M " ++ (toString startX) ++ ", " ++ (toString startY) ++
                                 " L " ++ (toString ((endX-startX)/2+startX)) ++ ", " ++ (toString ((endY-startY)/2+startY)) ++
                                 " L " ++ (toString endX) ++ ", " ++ (toString endY))
-                             , markerEnd ("url(#arrowHead" ++ toString id ++ ")")
-                             , markerMid ("url(#arrowCaption" ++ toString id ++ ")")
-                             , Svg.Attributes.style ("stroke:rgb(255,0,0);stroke-width:" ++ (toString myStrokeWidth))] [myMarker]
+                              , myMarkerAttribute
+                             --, markerStart ("url(#arrowCaption" ++ toString fcArrow.id ++ ")")
+                             , Svg.Attributes.style ("stroke:rgb(255,0,0);stroke-width:" ++ (toString myStrokeWidth))] []
                     ,
                     Svg.path [ pointerEvents "all"
                              , Html.Events.onClick (KeyMsg 65)
 
                              , d ( "M " ++ (toString sx) ++ ", " ++ (toString sy) ++
                                 " L " ++ (toString (ex)) ++ ", " ++ (toString <|ey))
-                             , Svg.Attributes.style ("stroke:rgb(0,255,0);stroke-width:" ++ (toString <| 14 * myStrokeWidth) ++ ";stroke-opacity:0.0001")] [myMarker]
+                             , Svg.Attributes.style ("stroke:rgb(0,255,0);stroke-width:" ++ (toString <| 14 * myStrokeWidth) ++ ";stroke-opacity:0.0001")] []
                     ]
             in
-                Debug.log textOrientation
                 (t, myMarker, myMarker1)            
                          
 
@@ -659,7 +733,7 @@ fcShapeToSvg : Model -> FcShape -> Svg.Svg Msg
 fcShapeToSvg model fcShape = 
     let outerColor = "#FFF9CE"
         innerColor = "blue"
-        strokeColor = if model.selectedElement == fcShape.id then "red" else outerColor
+        strokeColor = if model.selectedElement == Just (Shape fcShape) then "red" else outerColor
         textColor = "red"
     in
     case fcShape.shapeType of
