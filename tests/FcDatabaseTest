@@ -1,0 +1,3 @@
+module FcDatabaseTest exposing (..)
+
+fcDatabaseTests = suite "FcDatabaseTest" []
