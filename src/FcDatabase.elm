@@ -59,10 +59,11 @@ readShapeType : String -> ShapeType
 readShapeType s =
     case s of
         "Start" -> Start
-        "End" -> End
-        "Action" -> Action
-        "Condition" -> Condition
-        _ -> End
+        --"End" -> End
+        --"Action" -> Action
+        --"Condition" -> Condition
+        --_ -> End
+        _ -> Start
 
 
 saveElements : Model -> Task Http.RawError Http.Response

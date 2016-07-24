@@ -14,10 +14,6 @@ import FcTypes exposing (..)
 import FcElement exposing (..)
 import Tests exposing (..)
 
-myFontSize = 14
-myFontFamily = "Courier"
-innerPadding = 10.0
-outerPadding = 15.0
 
 view : Model -> Html Msg
 view model =
@@ -31,18 +27,18 @@ view model =
                    , Html.Attributes.tabindex 0
                    , Html.Events.on "keydown" (Html.Events.keyCode |> Json.map (\keyCode -> KeyMsg keyCode))
                    , Html.Events.on "scroll" (Json.succeed (SetScrollPosition "mainEl"))
-                   , Html.Attributes.style [("width", "70%"), ("height", "80%"),  ("overflow", "scroll"), ("backgroundColor", "yellow")]] [
+                   , Html.Attributes.style [("width", "70%"), ("height", "80%"),  ("overflow", "scroll")]] [
         Html.div
-            [
-                Html.Attributes.style
+            [ Html.Attributes.style
                 [ ("position", "fixed")
                 , ("bottom", "0px")
                 , ("left", "0px")
                 , ("width", "70%")
                 , ("height", "20%")
                 , ("backgroundColor", "yellow")
-                ]]
-            [Html.textarea
+                ]
+            ]
+            [ Html.textarea
                 [ Html.Attributes.value getTestResults
                 , Html.Attributes.style
                     [ ("width", "100%")
@@ -52,24 +48,36 @@ view model =
                 ]
                 []
             ]
-            , svg [ Svg.Attributes.style "background-color:lightblue", viewBox "0 0 8500 8500", width "8500", height "8500", pointerEvents "none"]
+            , svg [ Svg.Attributes.style "background-color:lightblue;", viewBox "0 0 8500 8500", width "8500", height "8500", pointerEvents "none"]
                 (([defs []
                     [ marker [id "arrowHead", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto"]
                         [ g []
                             [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]
                         --    , rect [ y "-24", x "-60", width "400", height "140", Svg.Attributes.style "fill:rgb(144, 0, 144);stroke-width:3;stroke:rgb(0, 40, 150)"] []
                         ]
-                    , marker [id "arrowHeadRotated", markerWidth "15", markerHeight "10", viewBox "-6, -6, 12, 12", refX "5", refY "0", orient "auto-start-reverse"]
-                            [ polygon [points "-2,0 -5,5 5,0 -5,-5", fill "red", stroke "black", strokeWidth "1px" ] []]
-                    , marker [id "arrowCaption", markerWidth "600", viewBox "-300, -120, 600, 120", markerHeight "120", refX "50", refY "0", orient "auto"]
-                                [ text' [ Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;", fontSize (toString myFontSize), fontFamily myFontFamily, x (toString -50), y (toString -10), fill "green"] [Svg.text "Hallo Welt"]]
-                    , marker [id "arrowCaptionRotated", markerWidth "180", viewBox "-40, -60, 420, 120", markerHeight "52", refX "50", refY "0", orient "auto-start-reverse"]
-                            [text' [Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;", fontSize (toString myFontSize), fontFamily myFontFamily, x (toString -50), y (toString -10), fill "green"] [Svg.text "Hallo Welt"]]]
-                          
+                    , marker
+                        [ id "arrowHeadRotated"
+                        , markerWidth "15"
+                        , markerHeight "10"
+                        , viewBox "-6, -6, 12, 12"
+                        , refX "5"
+                        , refY "0"
+                        , orient "auto-start-reverse"
+                        ]
+                        [ polygon
+                            [ points "-2,0 -5,5 5,0 -5,-5"
+                            , fill "red"
+                            , stroke "black"
+                            , strokeWidth "1px"
+                            ]
+                            []
+                        ]
+                    ]
                 ]) ++
+                (--List.map (fcShapeToSvg model) [{id=-1, shapeType=Start, x=10,y=10,text="",title="Start"}] ++
                 (List.map (fcShapeToSvg model) model.fcShapes ++
                  List.map (fcArrowToSvg model) model.fcArrows ++
-                 cur))] 
+                 cur)))] 
         , Html.div [
             Html.Attributes.style
             [ ("position", "fixed")
@@ -88,7 +96,7 @@ view model =
                                         sh.title
                                     Just (ArrowElement ar) ->
                                         ar.title
-                                    _ -> "") (Maybe.map (getElementWithId model) (model.selectedElement)))), Html.Events.onInput TitleChanged][]]
+                                    _ -> "") (Maybe.map (getElementWithId model) (model.selectedElementId)))), Html.Events.onInput TitleChanged][]]
                     ]
                 , Html.tr []
                     [ Html.td []
@@ -100,12 +108,16 @@ view model =
                                         sh.text
                                     Just (ArrowElement ar) ->
                                         "Pfeile haben keinen Text"
-                                    _ -> "") (Maybe.map (getElementWithId model) (model.selectedElement)))), Html.Events.onInput TextChanged][]]
+                                    _ -> "") (Maybe.map (getElementWithId model) (model.selectedElementId)))), Html.Events.onInput TextChanged][]]
                     ]
                 ]
-            , Html.div [Html.Attributes.style [("minWidth", "50%")]] (createHtml model model.displayedDivId)
+            , Html.div [Html.Attributes.style [("minWidth", "50%")]] ((\x -> case x of
+                                                                                 Nothing -> []
+                                                                                 Just (FcArrowId id) -> []
+                                                                                 Just (FcShapeId id) -> createHtml model id) model.selectedElementId)
             ]
         ]
+
 
 createHtml : Model -> Id -> List (Html Msg)
 createHtml model id =
@@ -121,18 +133,18 @@ createHtml model id =
                                                 _ -> Nothing) arrows
                 in
                     case shape.shapeType of
-                        Condition ->
-                            (Html.p
-                                [Html.Attributes.id (toString id)]
-                                [text shape.text])::
-                            (List.foldl
-                                (\el state ->
-                                    case el.endPos of
-                                        Offset (endId, _, _) ->
-                                            Html.p [] [Html.a [Html.Attributes.href "#", Html.Events.onClick (DisplayDiv endId)] [Html.text el.title]]::state
-                                        _ -> state
-                                ) [] arrows
-                            )
+                       -- Condition ->
+                       --     (Html.p
+                       --         [Html.Attributes.id (toString id)]
+                       --         [text shape.text])::
+                       --     (List.foldl
+                       --         (\el state ->
+                       --             case el.endPos of
+                       --                 Offset (endId, _, _) ->
+                       --                     Html.p [] [Html.a [Html.Attributes.href "#", Html.Events.onClick (DownMsg {areaType=Inner, id=FcShapeId endId})] [Html.text el.title]]::state
+                       --                 _ -> state
+                       --         ) [] arrows
+                       --     )
                         _ -> 
                             (Html.p
                                 [Html.Attributes.id (toString id)] [text shape.text])::
@@ -159,20 +171,119 @@ fcArrowToSvg model {id, startPos, endPos, title} =
                         case el of
                             Nothing -> (0, 0)
                             Just e -> (x + e.x, y + e.y)
-    in
+        l = Basics.max 1 (sqrt (((endX-startX) ^ 2) + ((endY-startY)^2))) / myStrokeWidth
+        myStrokeWidth = 1
+        distance = 50/myStrokeWidth
+        (sx, sy) = (startX + ((endX - startX)) * ((distance/l)), startY + (endY - startY) * ((distance/l)))
+        (ex, ey) =
+            if l <= 2*distance
+            then (sx, sy)
+            else (endX - ((endX - startX)) * ((distance/l)), endY - (endY - startY) * ((distance/l)))
+        in
         if endX > startX
         then 
-            Svg.path [
-                    d ( "M " ++ (toString startX) ++ ", " ++ (toString startY) ++
-                        " L " ++ (toString ((endX-startX)/2+startX)) ++ ", " ++ (toString ((endY-startY)/2+startY)) ++
-                        " L " ++ (toString endX) ++ ", " ++ (toString endY)), markerEnd "url(#arrowHead)", markerMid "url(#arrowCaption)", Svg.Attributes.style "stroke:rgb(255,0,0);stroke-width:2"] []
+            Svg.svg
+                []
+                [ defs
+                    []
+                    [ marker
+                        [ Svg.Attributes.id <| "arrowCaption" ++ (toString id)
+                        , markerWidth "8500"
+                        , markerHeight "8500"
+                        , markerUnits "userSpaceOnUse"
+                        , viewBox "-300 -120 8500 8500"
+                        , refX (model.graphicsSettings.fontSize / 2
+                                |> getTextDimension title model.graphicsSettings.fontFamily
+                                |> fst
+                                |> toString)
+                        , refY "5"
+                        , orient "auto"
+                        ]
+                        [ text'
+                            [ Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+                            , fontSize (toString <| model.graphicsSettings.fontSize)
+                            , fontFamily model.graphicsSettings.fontFamily
+                            , x "0"
+                            , y "0"
+                            , fill "black"
+                            ]
+                            [Svg.text title]
+                        ]
+                    ]
+                , Svg.path
+                    [ d ( "M " ++ (toString startX) ++ ", " ++ (toString startY) ++
+                            " L " ++ (toString ((endX-startX)/2+startX)) ++ ", " ++ (toString ((endY-startY)/2+startY)) ++
+                            " L " ++ (toString endX) ++ ", " ++ (toString endY))
+                         , markerEnd "url(#arrowHead)"
+                         , markerMid ("url(#arrowCaption" ++ (toString id) ++ ")")
+                         , Svg.Attributes.style "stroke:rgb(255,0,0);stroke-width:2"
+                    ]
+                    []
+                , Svg.path
+                    [ pointerEvents "all"
+                    , Html.Events.onClick (DownMsg <| ArrowMiddle id)
+                    , d ( "M " ++ (toString sx) ++ ", " ++ (toString sy) ++
+                          " L " ++ (toString (ex)) ++ ", " ++ (toString <|ey))
+                    , Svg.Attributes.style ("stroke:rgb(0,255,0);stroke-width:" ++ (toString <| 14 * 2) ++ ";stroke-opacity:0.7001")] []
+                , Svg.path
+                    [ pointerEvents "all"
+                    , Html.Events.onClick (DownMsg <| ArrowStart id)
+                    , d ( "M " ++ (toString startX) ++ ", " ++ (toString startY) ++
+                          " L " ++ (toString (sx)) ++ ", " ++ (toString <| sy))
+                    , Svg.Attributes.style ("stroke:rgb(255,255,0);stroke-width:" ++ (toString <| 14 * 2) ++ ";stroke-opacity:0.7001")] []
+                , Svg.path
+                    [ pointerEvents "all"
+                    , Html.Events.onClick (DownMsg <| ArrowEnd id)
+                    , d ( "M " ++ (toString endX) ++ ", " ++ (toString endY) ++
+                          " L " ++ (toString (ex)) ++ ", " ++ (toString <| ey))
+                    , Svg.Attributes.style ("stroke:rgb(255,0,0);stroke-width:" ++ (toString <| 14 * 2) ++ ";stroke-opacity:0.7001")] []
+                ]
+                
         else
-            Svg.path [
+            Svg.svg
+                []
+                [ defs
+                    []
+                    [ marker
+                        [ Svg.Attributes.id <| "arrowCaption" ++ (toString id)
+                        , markerWidth "8500"
+                        , markerHeight "8500"
+                        , markerUnits "userSpaceOnUse"
+                        , viewBox "-300 -120 8500 8500"
+                        , refX (model.graphicsSettings.fontSize / 2
+                                |> getTextDimension title model.graphicsSettings.fontFamily
+                                |> fst
+                                |> toString)
+                        , refY "5"
+                        , orient "auto-start-reverse"]
+                        [ text'
+                            [ Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+                            , fontSize (toString model.graphicsSettings.fontSize)
+                            , fontFamily model.graphicsSettings.fontFamily
+                            , x "0"
+                            , y "0"
+                            , fill "green"
+                            ]
+                            [Svg.text title]
+                        ]
+                    ]
+                , Svg.path [
                     d ( "M " ++ (toString endX) ++ ", " ++ (toString endY) ++
                         " L " ++ (toString ((startX-endX)/2+endX)) ++ ", " ++ (toString ((startY-endY)/2+endY)) ++
-                        " L " ++ (toString startX) ++ ", " ++ (toString startY)), markerStart "url(#arrowHeadRotated)", markerMid "url(#arrowCaptionRotated)", Svg.Attributes.style "stroke:rgb(255,0,0);stroke-width:2"] []
-                          
-                         
+                        " L " ++ (toString startX) ++ ", " ++ (toString startY)), markerStart "url(#arrowHeadRotated)", markerMid ("url(#arrowCaption" ++ (toString id) ++ ")"), Svg.Attributes.style "stroke:rgb(255,0,0);stroke-width:2"
+                     ]
+                     []
+                , Svg.path
+                    [ pointerEvents "all"
+                    , Html.Events.onClick (KeyMsg 65)
+                    --, Html.Events.onClick (SelectArrowElement id)
+                    , d ( "M " ++ (toString sx) ++ ", " ++ (toString sy) ++
+                          " L " ++ (toString (ex)) ++ ", " ++ (toString <|ey))
+                    , Svg.Attributes.style ("stroke:rgb(0,255,0);stroke-width:" ++ (toString <| 14 * 2) ++ ";stroke-opacity:0.7001")] []
+                ]
+
+
+
 
 
 fcShapeToSvg : Model -> FcShape -> Svg.Svg Msg
@@ -180,21 +291,21 @@ fcShapeToSvg model fcShape =
     let outerColor = "#FFF9CE"
         innerColor = "yellow"
         strokeColor =
-            if model.selectedElement == Just (FcShapeId fcShape.id) then "red" else outerColor
+            if model.selectedElementId == Just (FcShapeId fcShape.id) then "red" else outerColor
         textColor = "red"
     in
     case fcShape.shapeType of
         Start ->
-            let (textWidth, textHeight) = getTextDimension fcShape.title "Courier" 20
-                innerShapeWidth = textWidth + innerPadding + innerPadding
-                innerShapeHeight = textHeight + innerPadding + innerPadding
-                outerShapeWidth = innerShapeWidth + outerPadding + outerPadding
-                outerShapeHeight = innerShapeHeight + outerPadding + outerPadding
+            let (textWidth, textHeight) = getTextDimension fcShape.title model.graphicsSettings.fontFamily model.graphicsSettings.fontSize
+                innerShapeWidth = textWidth + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
+                innerShapeHeight = textHeight + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
+                outerShapeWidth = innerShapeWidth + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
+                outerShapeHeight = innerShapeHeight + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
             in
                 g [ pointerEvents "all"] [
                          
-                    rect [ onMouseDown (DownMsg {areaType=Outer, id=fcShape.id})
-                         , onMouseUp (UpMsg {areaType=Outer, id=fcShape.id})
+                    rect [ onMouseDown (DownMsg <| Outer fcShape.id)
+                         , onMouseUp (UpMsg <| Outer fcShape.id)
                          , x (toString fcShape.x)
                          , y (toString <| fcShape.y)
                          , width <| toString outerShapeWidth
@@ -205,138 +316,138 @@ fcShapeToSvg model fcShape =
                          , strokeDasharray "10,10"
                          , fill outerColor
                          ] [],
-                    rect [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
-                         , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
-                         , x (toString (fcShape.x + outerPadding))
-                         , y (toString (fcShape.y + outerPadding))
+                    rect [ onMouseDown (DownMsg <| Inner fcShape.id)
+                         , onMouseUp (UpMsg <| Inner fcShape.id)
+                         , x (toString (fcShape.x + model.graphicsSettings.outerPadding))
+                         , y (toString (fcShape.y + model.graphicsSettings.outerPadding))
                          , width <| toString innerShapeWidth
                          , height <| toString innerShapeHeight
                          ,  rx "25"
                          , ry "25"
                          , fill innerColor ] [],
-                    text' [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
-                          , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
+                    text' [ onMouseDown (DownMsg <| Inner fcShape.id)
+                          , onMouseUp (UpMsg <| Inner fcShape.id)
                           , pointerEvents "none"
                           , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none; ms-user-select: none; khtml-user-select: none;"
-                          , fontFamily myFontFamily
-                          ,  fontSize (toString myFontSize)
+                          , fontFamily model.graphicsSettings.fontFamily
+                          ,  fontSize (toString model.graphicsSettings.fontSize)
                           ,  Svg.Attributes.cursor "default"
-                          , x (toString (fcShape.x + outerPadding + innerPadding))
-                          , y (toString (fcShape.y+outerPadding + innerPadding + textHeight / 2 + myFontSize/3))
+                          , x (toString (fcShape.x + model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding))
+                          , y (toString (fcShape.y+model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding + textHeight / 2 + model.graphicsSettings.fontSize/3))
                           , fill textColor] [Svg.text fcShape.title]]
-        Action ->
-            let (textWidth, textHeight) = getTextDimension fcShape.title "Courier" 20
-                innerShapeWidth = textWidth + innerPadding + innerPadding
-                innerShapeHeight = textHeight + innerPadding + innerPadding
-                outerShapeWidth = innerShapeWidth + outerPadding + outerPadding
-                outerShapeHeight = innerShapeHeight + outerPadding + outerPadding
-            in
-                g [ pointerEvents "all"] [
-                    rect [ onMouseDown (DownMsg {areaType=Outer, id=fcShape.id})
-                          , onMouseUp (UpMsg {areaType=Outer, id=fcShape.id})
-                         , x (toString fcShape.x)
-                         , y (toString <| fcShape.y)
-                         , width <| toString outerShapeWidth
-                         , height <| toString outerShapeHeight
-                         , stroke strokeColor
-                         , strokeDasharray "10,10"
-                         , fill outerColor] [],
-                    rect [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
-                          , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
-                         , x (toString (fcShape.x + outerPadding))
-                         , y (toString (fcShape.y + outerPadding))
-                         , width <| toString innerShapeWidth
-                         , height <| toString innerShapeHeight
-                         , fill innerColor ] [],
-                    text' [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
-                          , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
-                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
-                          , fontFamily myFontFamily
-                          ,  fontSize (toString myFontSize)
-                          ,  Svg.Attributes.cursor "default"
-                          , x (toString (fcShape.x + outerPadding + innerPadding))
-                          , y (toString (fcShape.y+outerPadding + innerPadding + textHeight / 2 + myFontSize / 3))
-                          , fill textColor ] [Svg.text fcShape.title]]
-        End ->
-            let (textWidth, textHeight) = getTextDimension fcShape.title "Courier" 20
-                innerShapeWidth = textWidth + innerPadding + innerPadding
-                innerShapeHeight = textHeight + innerPadding + innerPadding
-                outerShapeWidth = innerShapeWidth + outerPadding + outerPadding
-                outerShapeHeight = innerShapeHeight + outerPadding + outerPadding
-            in
-                g [ pointerEvents "all"] [
-                         
-                    rect [ onMouseDown (DownMsg {areaType=Outer, id=fcShape.id})
-                         , onMouseUp (UpMsg {areaType=Outer, id=fcShape.id})
-                         , x (toString fcShape.x)
-                         , y (toString <| fcShape.y)
-                         , width <| toString outerShapeWidth
-                         , height <| toString outerShapeHeight
-                         ,  rx "30"
-                         , ry "30"
-                         , stroke strokeColor
-                         , strokeDasharray "10,10"
-                         , fill outerColor
-                         ] [],
-                    rect [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
-                         , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
-                         , x (toString (fcShape.x + outerPadding))
-                         , y (toString (fcShape.y + outerPadding))
-                         , width <| toString innerShapeWidth
-                         , height <| toString innerShapeHeight
-                         ,  rx "25"
-                         , ry "25"
-                         , fill innerColor ] [],
-                    text' [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
-                          , onMouseUp (UpMsg {areaType=Inner, id=fcShape.id})
-                          , pointerEvents "none"
-                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
-                          , fontFamily myFontFamily
-                          ,  fontSize (toString myFontSize)
-                          ,  Svg.Attributes.cursor "default"
-                          , x (toString (fcShape.x + outerPadding + innerPadding))
-                          , y (toString (fcShape.y+outerPadding + innerPadding + textHeight / 2 + myFontSize/3))
-                          , fill textColor] [Svg.text fcShape.title]]
-        Condition ->
-            let (textWidth, textHeight) = getTextDimension fcShape.title "Courier" 20
-                innerShapeWidth = textWidth + innerPadding + innerPadding
-                innerShapeHeight = textHeight + innerPadding + innerPadding
-                outerShapeWidth = innerShapeWidth + outerPadding + outerPadding
-                outerShapeHeight = innerShapeHeight + outerPadding + outerPadding
-                innerStartX = fcShape.x + outerPadding -- - smallAmount
-                innerStartY = fcShape.y + outerPadding
-            in
-                g [pointerEvents "all"
-                         , onMouseUp (UpMsg {areaType=Outer, id=fcShape.id})][
-                    polygon[ onMouseDown (DownMsg {areaType=Outer, id=fcShape.id})
-                         , points ((toString <| fcShape.x) ++ "," ++ (toString <| fcShape.y + outerShapeHeight/2) ++ " "
-                                ++ (toString (fcShape.x + outerShapeWidth/2)) ++ "," ++ (toString fcShape.y) ++ " "
-                                ++ (toString (fcShape.x + outerShapeWidth)) ++ "," ++ (toString (fcShape.y + outerShapeHeight/2)) ++ " "
-                                ++ (toString <| fcShape.x + outerShapeWidth / 2) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " ")
+--        Action ->
+--            let (textWidth, textHeight) = getTextDimension fcShape.title model.graphicsSettings.fontFamily model.graphicsSettings.fontSize
+--                innerShapeWidth = textWidth + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
+--                innerShapeHeight = textHeight + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
+--                outerShapeWidth = innerShapeWidth + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
+--                outerShapeHeight = innerShapeHeight + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
+--            in
+--                g [ pointerEvents "all"] [
+--                    rect [ onMouseDown (DownMsg <| fcShape.id)
+--                          , onMouseUp (UpMsg <| fcShape.id)
+--                         , x (toString fcShape.x)
+--                         , y (toString <| fcShape.y)
+--                         , width <| toString outerShapeWidth
+--                         , height <| toString outerShapeHeight
+--                         , stroke strokeColor
+--                         , strokeDasharray "10,10"
+--                         , fill outerColor] [],
+--                    rect [ onMouseDown (DownMsg <| fcShape.id)
+--                          , onMouseUp (UpMsg <| fcShape.id)
+--                         , x (toString (fcShape.x + model.graphicsSettings.outerPadding))
+--                         , y (toString (fcShape.y + model.graphicsSettings.outerPadding))
+--                         , width <| toString innerShapeWidth
+--                         , height <| toString innerShapeHeight
+--                         , fill innerColor ] [],
+--                    text' [ onMouseDown (DownMsg <| fcShape.id)
+--                          , onMouseUp (UpMsg <| fcShape.id)
+--                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+--                          , fontFamily model.graphicsSettings.fontFamily
+--                          ,  fontSize (toString model.graphicsSettings.fontSize)
+--                          ,  Svg.Attributes.cursor "default"
+--                          , x (toString (fcShape.x + model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding))
+--                          , y (toString (fcShape.y+model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding + textHeight / 2 + model.graphicsSettings.fontSize / 3))
+--                          , fill textColor ] [Svg.text fcShape.title]]
+--        End ->
+--            let (textWidth, textHeight) = getTextDimension fcShape.title model.graphicsSettings.fontFamily model.graphicsSettings.fontSize
+--                innerShapeWidth = textWidth + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
+--                innerShapeHeight = textHeight + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
+--                outerShapeWidth = innerShapeWidth + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
+--                outerShapeHeight = innerShapeHeight + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
+--            in
+--                g [ pointerEvents "all"] [
+--                         
+--                    rect [ onMouseDown (DownMsg <| fcShape.id)
+--                         , onMouseUp (UpMsg <| fcShape.id)
+--                         , x (toString fcShape.x)
+--                         , y (toString <| fcShape.y)
+--                         , width <| toString outerShapeWidth
+--                         , height <| toString outerShapeHeight
+--                         ,  rx "30"
+--                         , ry "30"
+--                         , stroke strokeColor
+--                         , strokeDasharray "10,10"
+--                         , fill outerColor
+--                         ] [],
+--                    rect [ onMouseDown (DownMsg <| fcShape.id)
+--                         , onMouseUp (UpMsg  fcShape.id)
+--                         , x (toString (fcShape.x + model.graphicsSettings.outerPadding))
+--                         , y (toString (fcShape.y + model.graphicsSettings.outerPadding))
+--                         , width <| toString innerShapeWidth
+--                         , height <| toString innerShapeHeight
+--                         ,  rx "25"
+--                         , ry "25"
+--                         , fill innerColor ] [],
+--                    text' [ onMouseDown (DownMsg  fcShape.id)
+--                          , onMouseUp (UpMsg  fcShape.id)
+--                          , pointerEvents "none"
+--                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+--                          , fontFamily model.graphicsSettings.fontFamily
+--                          ,  fontSize (toString model.graphicsSettings.fontSize)
+--                          ,  Svg.Attributes.cursor "default"
+--                          , x (toString (fcShape.x + model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding))
+--                          , y (toString (fcShape.y+model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding + textHeight / 2 + model.graphicsSettings.fontSize/3))
+--                          , fill textColor] [Svg.text fcShape.title]]
+--        Condition ->
+--            let (textWidth, textHeight) = getTextDimension fcShape.title model.graphicsSettings.fontFamily model.graphicsSettings.fontSize
+--                innerShapeWidth = textWidth + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
+--                innerShapeHeight = textHeight + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
+--                outerShapeWidth = innerShapeWidth + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
+--                outerShapeHeight = innerShapeHeight + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
+--                innerStartX = fcShape.x + model.graphicsSettings.outerPadding -- - smallAmount
+--                innerStartY = fcShape.y + model.graphicsSettings.outerPadding
+--            in
+--                g [pointerEvents "all"
+--                         , onMouseUp (UpMsg  fcShape.id)][
+--                    polygon[ onMouseDown (DownMsg  fcShape.id)
+--                         , points ((toString <| fcShape.x) ++ "," ++ (toString <| fcShape.y + outerShapeHeight/2) ++ " "
+--                                ++ (toString (fcShape.x + outerShapeWidth/2)) ++ "," ++ (toString fcShape.y) ++ " "
+--                                ++ (toString (fcShape.x + outerShapeWidth)) ++ "," ++ (toString (fcShape.y + outerShapeHeight/2)) ++ " "
+--                                ++ (toString <| fcShape.x + outerShapeWidth / 2) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " ")
+--
+--                         , stroke strokeColor
+--                         , strokeDasharray "10,10"
+--                         , fill outerColor ] [],
+--                    polygon [ onMouseDown (DownMsg  fcShape.id)
+--                         , points ((toString <| innerStartX) ++ "," ++ (toString <| innerStartY + innerShapeHeight/2) ++ " "
+--                                ++ (toString (innerStartX + innerShapeWidth/2)) ++ "," ++ (toString <| innerStartY) ++ " "
+--                                ++ (toString (innerStartX + innerShapeWidth)) ++ "," ++ (toString (innerStartY + innerShapeHeight/2)) ++ " "
+--                                ++ (toString <| innerStartX + innerShapeWidth / 2) ++ "," ++ (toString (innerStartY + innerShapeHeight)) ++ " ")
+--
+--                         , fill innerColor] [],
+--                    text' [ onMouseDown (DownMsg {areaType=Inner, id=FcShapeId fcShape.id})
+--                          , fontFamily model.graphicsSettings.fontFamily
+--                          , fontSize (toString model.graphicsSettings.fontSize)
+--                          ,  Svg.Attributes.cursor "default"
+--                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+--                          , x (toString (fcShape.x + model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding))
+--                          , y (toString (fcShape.y+model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding + textHeight / 2 + model.graphicsSettings.fontSize / 3))
+--                          , fill textColor] [Svg.text fcShape.title]]
 
-                         , stroke strokeColor
-                         , strokeDasharray "10,10"
-                         , fill outerColor ] [],
-                    polygon [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
-                         , points ((toString <| innerStartX) ++ "," ++ (toString <| innerStartY + innerShapeHeight/2) ++ " "
-                                ++ (toString (innerStartX + innerShapeWidth/2)) ++ "," ++ (toString <| innerStartY) ++ " "
-                                ++ (toString (innerStartX + innerShapeWidth)) ++ "," ++ (toString (innerStartY + innerShapeHeight/2)) ++ " "
-                                ++ (toString <| innerStartX + innerShapeWidth / 2) ++ "," ++ (toString (innerStartY + innerShapeHeight)) ++ " ")
 
-                         , fill innerColor] [],
-                    text' [ onMouseDown (DownMsg {areaType=Inner, id=fcShape.id})
-                          , fontFamily myFontFamily
-                          ,  fontSize (toString myFontSize)
-                          ,  Svg.Attributes.cursor "default"
-                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
-                          , x (toString (fcShape.x + outerPadding + innerPadding))
-                          , y (toString (fcShape.y+outerPadding + innerPadding + textHeight / 2 + myFontSize / 3))
-                          , fill textColor] [Svg.text fcShape.title]]
-
-
-getTextDimension : String -> String -> Int -> (Float,Float)
-getTextDimension text  font  fontSize = 
+getTextDimension : String -> String -> Float -> (Float,Float)
+getTextDimension text  font fontSize = 
     case font of
-        "Courier" -> ((toFloat (fontSize * (String.length text))) * 0.6, toFloat fontSize)
-        _ -> ((toFloat (fontSize * (String.length text))) * 0.6, toFloat fontSize)
+        "Courier" -> (((fontSize * (toFloat <| String.length text))) * 0.625, fontSize)
+        _ ->         (((fontSize * (toFloat <| String.length text))) * 0.625, fontSize)
 

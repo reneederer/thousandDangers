@@ -5,9 +5,9 @@ import Mouse
 
 type ShapeType = 
       Start
-    | End
-    | Condition
-    | Action
+    --| End
+    --| Condition
+    --| Action
 
 type alias Position = 
     { x : Float
@@ -39,42 +39,48 @@ type FcElement =
       ShapeElement FcShape
     | ArrowElement FcArrow
 
-type ShapeAreaType = 
-      Outer
-    | Inner
+type AreaType = 
+      Outer Id
+    | Inner Id
+    | ArrowStart Id
+    | ArrowEnd Id
+    | ArrowMiddle Id
 
 type FcElementId = 
       FcShapeId Id
     | FcArrowId Id
-
-type alias ShapeArea = 
-    { areaType : ShapeAreaType
-    , id : Id }
 
 type Msg =
       MouseDown Mouse.Position
     | MouseUp Mouse.Position
     | MouseMove Mouse.Position
     | KeyMsg Keyboard.KeyCode
-    | DownMsg ShapeArea
-    | UpMsg ShapeArea
+    | DownMsg AreaType
+    | UpMsg AreaType
     | HttpSuccess (List FcShape, List FcArrow)
     | HttpFailure String
     | TitleChanged String
     | TextChanged String
-    | DisplayDiv Int
     | SetScrollPosition String
     | ScrollPositionTold Position
+    | CreateNewShape ShapeType
+
+type alias GraphicsSettings = 
+    { fontFamily : String
+    , fontSize : Float
+    , innerPadding : Float
+    , outerPadding : Float
+    }
 
 
 type alias Model =
     { fcShapes : List FcShape
     , fcArrows : List FcArrow
-    , dragElement : Maybe ShapeArea
+    , dragElement : Maybe AreaType
     , dragOffsetX : Float
     , dragOffsetY : Float
-    , selectedElement : Maybe FcElementId
+    , selectedElementId : Maybe FcElementId
     , currentLine : Maybe (FcPos, FcPos)
-    , displayedDivId : Int
     , mainDivOffset : Position
+    , graphicsSettings : GraphicsSettings
     }

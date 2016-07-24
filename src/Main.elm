@@ -32,33 +32,50 @@ init =
     ({
         fcShapes =
             [ ({id=1, shapeType=Start, x=40,y=90,text="abc",title="8"})
-            , ({id=2, shapeType=Action, x=40,y=490,text="def",title="treasdfasdf2"})]
-            --, ({id=3, shapeType=End, x=150,y=290,text="",title="j23j"})]
+            , ({id=2, shapeType=Start, x=40,y=490,text="def",title="treasdfasdf2"})
+            , ({id=3, shapeType=Start, x=340,y=290,text="Noch ein Element",title="Noch ein Element"})
+            ]
         , fcArrows =
-            [ ({id=1, startPos= Offset (1, 10, 40), endPos=Offset (2, 50, 5), title="1"})
-            , ({id=2, startPos=Global (190, 50), endPos=Global (800, 500), title="ijs2"})]
+            [ ({id=1, startPos= Offset (1, 10, 40), endPos=Offset (2, 50, 5), title="Start"})
+            , ({id=2, startPos=Offset (2, 10, 50), endPos=Offset (3, 80, 50), title="ijs2"})
+            ]
         , dragElement=Nothing
         , dragOffsetX=0
         , dragOffsetY=0
-        , selectedElement= Just <| FcShapeId 1
+        , selectedElementId= Just <| FcShapeId 1
         , currentLine=Nothing
-        , displayedDivId=1
         , mainDivOffset={x=0.0, y=0.0}
+        , graphicsSettings = { fontSize = 28.0
+                             , fontFamily = "Courier"
+                             , innerPadding = 40.0
+                             , outerPadding = 40.0
+                             }
     }, Cmd.none)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
-        DownMsg { areaType, id} ->
+        DownMsg areaType ->
             case areaType of
-                Inner -> {model | dragElement=(Just {areaType=areaType, id=id}), displayedDivId=id, selectedElement=Just <| FcShapeId id, currentLine=Nothing } ! []
-                Outer -> {model | dragElement=(Just {areaType=areaType, id=id}), displayedDivId=id, selectedElement=Just <| FcShapeId id, currentLine=Just (Offset (id, 0, 0), Offset (id, 0, 0)) } ! []
+                Inner id ->
+                    let _ = Debug.log "Inner" id in
+                    {model | dragElement=Just <| Inner id, selectedElementId=Just <| FcShapeId id, currentLine=Nothing } ! []
+                Outer id ->
+                    let _ = Debug.log "Outer" id in
+                    {model | dragElement=Just <| Outer id, selectedElementId=Just <| FcShapeId id, currentLine=Just (Offset (id, 0, 0), Offset (id, 0, 0)) } ! []
+                _ -> model ! []
         MouseDown lpos->
             let pos = localToGlobal {x=toFloat lpos.x, y=toFloat lpos.y} model.mainDivOffset 
                 id = 
                     case model.dragElement of
                         Nothing -> Nothing
-                        (Just  ({areaType, id})) -> Just id
+                        Just areaType ->
+                            case areaType of
+                                ArrowStart id -> Just id
+                                ArrowEnd id -> Just id
+                                ArrowMiddle id -> Just id
+                                Inner id -> Just id
+                                Outer id -> Just id
                 shapePos = Maybe.map (getShapeWithId model) id
             in
                 case shapePos of
@@ -66,7 +83,6 @@ update msg model =
                         let offsetX=(pos.x)-el.x
                             offsetY=(pos.y)-el.y
                         in
-                            Debug.log "mousedown!!!"
                             { model | dragOffsetX=offsetX
                                     , dragOffsetY=offsetY
                                     , currentLine=Maybe.map (\(s, e) -> 
@@ -79,18 +95,30 @@ update msg model =
         KeyMsg code ->
             case code of 
                 65 -> { model | fcShapes =
-                                             { id=findFreeId model.fcShapes, shapeType=Start, x=400.0, y=400.0, text="", title="Ein Startelement" } 
+                                             { id=findFreeId model.fcShapes, shapeType=Start, x=0.0, y=0.0, text="", title="Aktion" } 
                                              :: model.fcShapes
                       } ! []
-                66 ->
+                66 -> { model | fcShapes =
+                                             { id=findFreeId model.fcShapes, shapeType=Start, x=0.0, y=0.0, text="", title="Bedingung" } 
+                                             :: model.fcShapes
+                      } ! []
+                69 -> { model | fcShapes =
+                                             { id=findFreeId model.fcShapes, shapeType=Start, x=0.0, y=0.0, text="", title="Ende" } 
+                                             :: model.fcShapes
+                      } ! []
+                76 ->
                     let x = loadElements |> perform (\a -> HttpFailure (toString a)) (\a -> HttpSuccess a)
                     in
                         model ! [x]
+                83 -> { model | fcShapes =
+                                             { id=findFreeId model.fcShapes, shapeType=Start, x=0.0, y=0.0, text="", title="Start" } 
+                                             :: model.fcShapes
+                      } ! []
                 67 ->
                     let x = (saveElements model |> perform (\a -> HttpFailure (toString a)) (\a -> HttpFailure (toString a)))
                     in
                         model ! [x]
-                46 -> (Maybe.withDefault model (Maybe.map (removeElement model) model.selectedElement)) ! []
+                46 -> (Maybe.withDefault model (Maybe.map (removeElement model) model.selectedElementId)) ! []
                 c -> model ! []
         SetScrollPosition s -> 
             model ! [getScrollPosition s]
@@ -101,21 +129,31 @@ update msg model =
         HttpFailure s -> 
             model ! []
         TitleChanged s ->
-            let m = { model | fcShapes = List.map (\el -> if Just (FcShapeId el.id) == model.selectedElement then {el | title = s} else el) model.fcShapes}
+            let m = { model | fcShapes = List.map (\el -> if Just (FcShapeId el.id) == model.selectedElementId then {el | title = s} else el) model.fcShapes}
             in
                 m ! []
         TextChanged s ->
-            let m = { model | fcShapes = List.map (\el -> if Just (FcShapeId el.id) == model.selectedElement then {el | text = s} else el) model.fcShapes}
+            let m = { model | fcShapes = List.map (\el -> if Just (FcShapeId el.id) == model.selectedElementId then {el | text = s} else el) model.fcShapes}
             in
                 m ! []
 
-        UpMsg { areaType, id} ->
-            Debug.log "mouseup!!!"
-            {model |dragElement=Nothing, currentLine=Maybe.map (\l -> (fst l, Offset (id, 0, 0))) model.currentLine } ! []
-        DisplayDiv id ->
-            { model | displayedDivId=id } ! []
+        UpMsg areaType ->
+            let _ = Debug.log "id ist.................................." areaType in
+            case areaType of
+                ArrowStart id -> model ! []
+                ArrowEnd id -> model ! []
+                ArrowMiddle id -> model ! []
+                Inner id ->
+                    let newCurrentLine = Maybe.map (\l -> (fst l, Offset (id, 0, 0))) model.currentLine
+                        _ = Debug.log "currentLine" newCurrentLine in
+                    { model | dragElement=Nothing, currentLine=newCurrentLine } ! []
+                Outer id ->
+                    let newCurrentLine = Maybe.map (\l -> (fst l, Offset (id, 0, 0))) model.currentLine
+                        _ = Debug.log "currentLine" newCurrentLine
+                    in { model | dragElement=Nothing, currentLine=newCurrentLine } ! []
         MouseUp pos ->
             let arrow = Maybe.map (\l -> { id=findFreeId model.fcShapes, startPos=(fst l), endPos=(snd l) }) model.currentLine
+                _ = Debug.log "mouseup" pos
                 h = case arrow of 
                     Nothing -> []
                     Just a ->
@@ -139,13 +177,13 @@ update msg model =
             in
             case model.dragElement of
                 Nothing -> model ! []
-                Just {areaType, id} -> 
+                Just areaType -> 
                     case areaType of
-                        Inner ->
+                        Inner id ->
                             let m = moveElementTo model model.dragElement (pos.x-model.dragOffsetX) (pos.y-model.dragOffsetY)
                             in
                                 m ! []
-                        Outer ->
+                        Outer id ->
                             let element = getShapeWithId model id
                                 m = 
                                     case element of
@@ -154,6 +192,8 @@ update msg model =
                                             { model | currentLine=(Maybe.map (\(startPos, _) -> (startPos, Global (pos.x, pos.y))) model.currentLine)}
                             in
                                 m ! []
+                        _ -> model ! []
+        CreateNewShape shapeType -> model ! []
 
 localToGlobal : Position -> Position -> Position
 localToGlobal pos offset = 
@@ -161,20 +201,20 @@ localToGlobal pos offset =
     , y = pos.y + offset.y }
 
 
-moveElementTo : Model -> Maybe ShapeArea -> Float -> Float -> Model
+moveElementTo : Model -> Maybe AreaType -> Float -> Float -> Model
 moveElementTo model movingElement x y = 
     case movingElement of
         Nothing -> model
-        Just {areaType, id} ->
-            let newShapes = List.map (\el ->
-                    if el.id == id
-                    then
-                        {el | x = x, y=y}
-                    else
-                        el
-                ) model.fcShapes
-            in
-                { model | fcShapes = newShapes }
+        Just areaType ->
+            case areaType of
+                Inner id -> let newShapes = List.map (\el ->
+                            if el.id == id
+                            then
+                                {el | x = x, y=y}
+                            else
+                                el) model.fcShapes
+                    in { model | fcShapes = newShapes }
+                _ -> model
 
 
 

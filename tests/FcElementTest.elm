@@ -67,10 +67,14 @@ setup =
     , dragElement = Nothing
     , dragOffsetX = 0.0
     , dragOffsetY = 0.0
-    , selectedElement = Nothing
+    , selectedElementId = Nothing
     , currentLine = Nothing
-    , displayedDivId = 0
     , mainDivOffset = { x = 0, y = 0 }
+    , graphicsSettings = { fontFamily = "Courier"
+                         , fontSize = 20.0
+                         , innerPadding = 15.0
+                         , outerPadding = 10.0
+                         }
     }
 
 fcElementTests : Test
@@ -233,10 +237,14 @@ fcElementTests =
                     , dragElement = Nothing
                     , dragOffsetX = 0.0
                     , dragOffsetY = 0.0
-                    , selectedElement = Nothing
+                    , selectedElementId = Nothing
                     , currentLine = Nothing
-                    , displayedDivId = 0
                     , mainDivOffset = { x = 0, y = 0 }
+                    , graphicsSettings = { fontSize = 20.0
+                                       , fontFamily = "Courier"
+                                       , innerPadding = 10.0
+                                       , outerPadding = 15.0
+                                       }
                     }
                     (removeElement model (FcShapeId 2)))
             , test "removeElement_ExistingArrowId_ReturnsUpdatedModel"
@@ -298,10 +306,14 @@ fcElementTests =
                     , dragElement = Nothing
                     , dragOffsetX = 0.0
                     , dragOffsetY = 0.0
-                    , selectedElement = Nothing
+                    , selectedElementId = Nothing
                     , currentLine = Nothing
-                    , displayedDivId = 0
                     , mainDivOffset = { x = 0, y = 0 }
+                    , graphicsSettings = { fontFamily = "Courier"
+                                         , fontSize = 20.0
+                                         , innerPadding = 15.0
+                                         , outerPadding = 10.0
+                                         }
                     }
                     (removeElement model (FcArrowId 2)))
             ]
