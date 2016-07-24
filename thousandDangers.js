@@ -9915,12 +9915,6 @@ var _user$project$FcTypes$Model = F9(
 		return {fcShapes: a, fcArrows: b, dragElement: c, dragOffsetX: d, dragOffsetY: e, selectedElementId: f, currentLine: g, mainDivOffset: h, graphicsSettings: i};
 	});
 var _user$project$FcTypes$Start = {ctor: 'Start'};
-var _user$project$FcTypes$Global = function (a) {
-	return {ctor: 'Global', _0: a};
-};
-var _user$project$FcTypes$Offset = function (a) {
-	return {ctor: 'Offset', _0: a};
-};
 var _user$project$FcTypes$ArrowElement = function (a) {
 	return {ctor: 'ArrowElement', _0: a};
 };
@@ -9988,12 +9982,37 @@ var _user$project$FcTypes$MouseDown = function (a) {
 	return {ctor: 'MouseDown', _0: a};
 };
 
+var _user$project$FcElement$moveArrow = F4(
+	function (model, moveFunc, arrowId, pos) {
+		return _elm_lang$core$Native_Utils.update(
+			model,
+			{
+				fcArrows: A2(
+					_elm_lang$core$List$map,
+					function (ar) {
+						return _elm_lang$core$Native_Utils.eq(ar.id, arrowId) ? A2(moveFunc, ar, pos) : ar;
+					},
+					model.fcArrows)
+			});
+	});
+var _user$project$FcElement$setArrowEnd = F2(
+	function (fcArrow, pos) {
+		return _elm_lang$core$Native_Utils.update(
+			fcArrow,
+			{endPos: pos});
+	});
+var _user$project$FcElement$setArrowStart = F2(
+	function (fcArrow, pos) {
+		return _elm_lang$core$Native_Utils.update(
+			fcArrow,
+			{startPos: pos});
+	});
 var _user$project$FcElement$doesPositionShareElements = F2(
 	function (pos1, pos2) {
 		var _p0 = pos1;
-		if ((_p0.ctor === 'Offset') && (_p0._0.ctor === '_Tuple3')) {
+		if ((_p0.ctor === '_Tuple3') && (_p0._0.ctor === 'Just')) {
 			var _p1 = pos2;
-			if ((_p1.ctor === 'Offset') && (_p1._0.ctor === '_Tuple3')) {
+			if ((_p1.ctor === '_Tuple3') && (_p1._0.ctor === 'Just')) {
 				return _elm_lang$core$Native_Utils.eq(_p0._0._0, _p1._0._0);
 			} else {
 				return false;
@@ -10018,7 +10037,7 @@ var _user$project$FcElement$arrowsWithEndShape = F2(
 			_elm_lang$core$List$filter,
 			function (x) {
 				var _p2 = x.endPos;
-				if ((_p2.ctor === 'Offset') && (_p2._0.ctor === '_Tuple3')) {
+				if ((_p2.ctor === '_Tuple3') && (_p2._0.ctor === 'Just')) {
 					return _elm_lang$core$Native_Utils.eq(_p2._0._0, id);
 				} else {
 					return false;
@@ -10032,7 +10051,7 @@ var _user$project$FcElement$arrowsWithStartShape = F2(
 			_elm_lang$core$List$filter,
 			function (x) {
 				var _p3 = x.startPos;
-				if ((_p3.ctor === 'Offset') && (_p3._0.ctor === '_Tuple3')) {
+				if ((_p3.ctor === '_Tuple3') && (_p3._0.ctor === 'Just')) {
 					return _elm_lang$core$Native_Utils.eq(_p3._0._0, id);
 				} else {
 					return false;
@@ -10042,7 +10061,7 @@ var _user$project$FcElement$arrowsWithStartShape = F2(
 	});
 var _user$project$FcElement$getEndShapeId = function (arr) {
 	var _p4 = arr.endPos;
-	if ((_p4.ctor === 'Offset') && (_p4._0.ctor === '_Tuple3')) {
+	if ((_p4.ctor === '_Tuple3') && (_p4._0.ctor === 'Just')) {
 		return _elm_lang$core$Maybe$Just(_p4._0._0);
 	} else {
 		return _elm_lang$core$Maybe$Nothing;
@@ -10050,7 +10069,7 @@ var _user$project$FcElement$getEndShapeId = function (arr) {
 };
 var _user$project$FcElement$getStartShapeId = function (arr) {
 	var _p5 = arr.startPos;
-	if ((_p5.ctor === 'Offset') && (_p5._0.ctor === '_Tuple3')) {
+	if ((_p5.ctor === '_Tuple3') && (_p5._0.ctor === 'Just')) {
 		return _elm_lang$core$Maybe$Just(_p5._0._0);
 	} else {
 		return _elm_lang$core$Maybe$Nothing;
@@ -10113,20 +10132,19 @@ var _user$project$FcElement$removeElement = F2(
 						_elm_lang$core$List$map,
 						function (ar) {
 							var _p8 = ar.endPos;
-							if ((_p8.ctor === 'Offset') && (_p8._0.ctor === '_Tuple3')) {
+							if ((_p8.ctor === '_Tuple3') && (_p8._0.ctor === 'Just')) {
 								return _elm_lang$core$Native_Utils.eq(_p8._0._0, _p10) ? _elm_lang$core$Native_Utils.update(
 									ar,
 									{
-										endPos: _user$project$FcTypes$Global(
+										endPos: A2(
+											_elm_lang$core$Maybe$withDefault,
+											{ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 0, _2: 0},
 											A2(
-												_elm_lang$core$Maybe$withDefault,
-												{ctor: '_Tuple2', _0: 0, _1: 0},
-												A2(
-													_elm_lang$core$Maybe$map,
-													function (sh) {
-														return {ctor: '_Tuple2', _0: sh.x + _p8._0._1, _1: sh.y + _p8._0._2};
-													},
-													A2(_user$project$FcElement$getShapeWithId, model, _p10))))
+												_elm_lang$core$Maybe$map,
+												function (sh) {
+													return {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: sh.x + _p8._1, _2: sh.y + _p8._2};
+												},
+												A2(_user$project$FcElement$getShapeWithId, model, _p10)))
 									}) : ar;
 							} else {
 								return ar;
@@ -10136,20 +10154,19 @@ var _user$project$FcElement$removeElement = F2(
 							_elm_lang$core$List$map,
 							function (ar) {
 								var _p9 = ar.startPos;
-								if ((_p9.ctor === 'Offset') && (_p9._0.ctor === '_Tuple3')) {
+								if ((_p9.ctor === '_Tuple3') && (_p9._0.ctor === 'Just')) {
 									return _elm_lang$core$Native_Utils.eq(_p9._0._0, _p10) ? _elm_lang$core$Native_Utils.update(
 										ar,
 										{
-											startPos: _user$project$FcTypes$Global(
+											startPos: A2(
+												_elm_lang$core$Maybe$withDefault,
+												{ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 0, _2: 0},
 												A2(
-													_elm_lang$core$Maybe$withDefault,
-													{ctor: '_Tuple2', _0: 0, _1: 0},
-													A2(
-														_elm_lang$core$Maybe$map,
-														function (sh) {
-															return {ctor: '_Tuple2', _0: sh.x + _p9._0._1, _1: sh.y + _p9._0._2};
-														},
-														A2(_user$project$FcElement$getShapeWithId, model, _p10))))
+													_elm_lang$core$Maybe$map,
+													function (sh) {
+														return {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: sh.x + _p9._1, _2: sh.y + _p9._2};
+													},
+													A2(_user$project$FcElement$getShapeWithId, model, _p10)))
 										}) : ar;
 								} else {
 									return ar;
@@ -10175,15 +10192,15 @@ var _user$project$FcDatabase$saveElements = function (model) {
 	var toArrowObject = function (a) {
 		var _p0 = function () {
 			var _p1 = a.endPos;
-			if (_p1.ctor === 'Offset') {
+			if (_p1._0.ctor === 'Just') {
 				return {
 					ctor: '_Tuple3',
 					_0: _elm_lang$core$Json_Encode$int(_p1._0._0),
-					_1: _p1._0._1,
-					_2: _p1._0._2
+					_1: _p1._1,
+					_2: _p1._2
 				};
 			} else {
-				return {ctor: '_Tuple3', _0: _elm_lang$core$Json_Encode$null, _1: _p1._0._0, _2: _p1._0._1};
+				return {ctor: '_Tuple3', _0: _elm_lang$core$Json_Encode$null, _1: _p1._1, _2: _p1._2};
 			}
 		}();
 		var destination_id = _p0._0;
@@ -10191,15 +10208,15 @@ var _user$project$FcDatabase$saveElements = function (model) {
 		var destination_offset_y = _p0._2;
 		var _p2 = function () {
 			var _p3 = a.startPos;
-			if (_p3.ctor === 'Offset') {
+			if (_p3._0.ctor === 'Just') {
 				return {
 					ctor: '_Tuple3',
 					_0: _elm_lang$core$Json_Encode$int(_p3._0._0),
-					_1: _p3._0._1,
-					_2: _p3._0._2
+					_1: _p3._1,
+					_2: _p3._2
 				};
 			} else {
-				return {ctor: '_Tuple3', _0: _elm_lang$core$Json_Encode$null, _1: _p3._0._0, _2: _p3._0._1};
+				return {ctor: '_Tuple3', _0: _elm_lang$core$Json_Encode$null, _1: _p3._1, _2: _p3._2};
 			}
 		}();
 		var source_id = _p2._0;
@@ -10332,21 +10349,27 @@ var _user$project$FcDatabase$decodeElements = function () {
 					startPos: function () {
 						var _p5 = source_id;
 						if (_p5.ctor === 'Nothing') {
-							return _user$project$FcTypes$Global(
-								{ctor: '_Tuple2', _0: source_offset_x, _1: source_offset_y});
+							return {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: source_offset_x, _2: source_offset_y};
 						} else {
-							return _user$project$FcTypes$Offset(
-								{ctor: '_Tuple3', _0: _p5._0, _1: source_offset_x, _2: source_offset_y});
+							return {
+								ctor: '_Tuple3',
+								_0: _elm_lang$core$Maybe$Just(_p5._0),
+								_1: source_offset_x,
+								_2: source_offset_y
+							};
 						}
 					}(),
 					endPos: function () {
 						var _p6 = destination_id;
 						if (_p6.ctor === 'Nothing') {
-							return _user$project$FcTypes$Global(
-								{ctor: '_Tuple2', _0: destination_offset_x, _1: destination_offset_y});
+							return {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: destination_offset_x, _2: destination_offset_y};
 						} else {
-							return _user$project$FcTypes$Offset(
-								{ctor: '_Tuple3', _0: _p6._0, _1: destination_offset_x, _2: destination_offset_y});
+							return {
+								ctor: '_Tuple3',
+								_0: _elm_lang$core$Maybe$Just(_p6._0),
+								_1: destination_offset_x,
+								_2: destination_offset_y
+							};
 						}
 					}(),
 					title: title
@@ -10474,34 +10497,56 @@ var _user$project$FcElementTest$setup = {
 		[
 			{
 			id: 1,
-			startPos: _user$project$FcTypes$Offset(
-				{ctor: '_Tuple3', _0: 1, _1: 20, _2: 20}),
-			endPos: _user$project$FcTypes$Global(
-				{ctor: '_Tuple2', _0: 300, _1: 200}),
+			startPos: {
+				ctor: '_Tuple3',
+				_0: _elm_lang$core$Maybe$Just(1),
+				_1: 20,
+				_2: 20
+			},
+			endPos: {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 300, _2: 200},
 			title: 'title'
 		},
 			{
 			id: 2,
-			startPos: _user$project$FcTypes$Offset(
-				{ctor: '_Tuple3', _0: 1, _1: 20, _2: 20}),
-			endPos: _user$project$FcTypes$Offset(
-				{ctor: '_Tuple3', _0: 2, _1: 300, _2: 200}),
+			startPos: {
+				ctor: '_Tuple3',
+				_0: _elm_lang$core$Maybe$Just(1),
+				_1: 20,
+				_2: 20
+			},
+			endPos: {
+				ctor: '_Tuple3',
+				_0: _elm_lang$core$Maybe$Just(2),
+				_1: 300,
+				_2: 200
+			},
 			title: 'title'
 		},
 			{
 			id: 3,
-			startPos: _user$project$FcTypes$Offset(
-				{ctor: '_Tuple3', _0: 1, _1: 20, _2: 20}),
-			endPos: _user$project$FcTypes$Global(
-				{ctor: '_Tuple2', _0: 300, _1: 200}),
+			startPos: {
+				ctor: '_Tuple3',
+				_0: _elm_lang$core$Maybe$Just(1),
+				_1: 20,
+				_2: 20
+			},
+			endPos: {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 300, _2: 200},
 			title: 'title'
 		},
 			{
 			id: 4,
-			startPos: _user$project$FcTypes$Offset(
-				{ctor: '_Tuple3', _0: 8, _1: 20, _2: 20}),
-			endPos: _user$project$FcTypes$Offset(
-				{ctor: '_Tuple3', _0: 3, _1: 300, _2: 200}),
+			startPos: {
+				ctor: '_Tuple3',
+				_0: _elm_lang$core$Maybe$Just(8),
+				_1: 20,
+				_2: 20
+			},
+			endPos: {
+				ctor: '_Tuple3',
+				_0: _elm_lang$core$Maybe$Just(3),
+				_1: 300,
+				_2: 200
+			},
 			title: 'title'
 		}
 		]),
@@ -10561,10 +10606,13 @@ var _user$project$FcElementTest$fcElementTests = function () {
 							_elm_lang$core$Maybe$Just(
 								{
 									id: 1,
-									startPos: _user$project$FcTypes$Offset(
-										{ctor: '_Tuple3', _0: 1, _1: 20, _2: 20}),
-									endPos: _user$project$FcTypes$Global(
-										{ctor: '_Tuple2', _0: 300, _1: 200}),
+									startPos: {
+										ctor: '_Tuple3',
+										_0: _elm_lang$core$Maybe$Just(1),
+										_1: 20,
+										_2: 20
+									},
+									endPos: {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 300, _2: 200},
 									title: 'title'
 								}),
 							A2(_user$project$FcElement$getArrowWithId, model, 1)))
@@ -10615,10 +10663,13 @@ var _user$project$FcElementTest$fcElementTests = function () {
 								_user$project$FcTypes$ArrowElement(
 									{
 										id: 1,
-										startPos: _user$project$FcTypes$Offset(
-											{ctor: '_Tuple3', _0: 1, _1: 20, _2: 20}),
-										endPos: _user$project$FcTypes$Global(
-											{ctor: '_Tuple2', _0: 300, _1: 200}),
+										startPos: {
+											ctor: '_Tuple3',
+											_0: _elm_lang$core$Maybe$Just(1),
+											_1: 20,
+											_2: 20
+										},
+										endPos: {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 300, _2: 200},
 										title: 'title'
 									})),
 							A2(
@@ -10640,10 +10691,18 @@ var _user$project$FcElementTest$fcElementTests = function () {
 							_user$project$FcElement$getStartShapeId(
 								{
 									id: 2,
-									startPos: _user$project$FcTypes$Offset(
-										{ctor: '_Tuple3', _0: 1, _1: 20, _2: 20}),
-									endPos: _user$project$FcTypes$Offset(
-										{ctor: '_Tuple3', _0: 3, _1: 300, _2: 200}),
+									startPos: {
+										ctor: '_Tuple3',
+										_0: _elm_lang$core$Maybe$Just(1),
+										_1: 20,
+										_2: 20
+									},
+									endPos: {
+										ctor: '_Tuple3',
+										_0: _elm_lang$core$Maybe$Just(3),
+										_1: 300,
+										_2: 200
+									},
 									title: 'title'
 								}))),
 						A2(
@@ -10655,10 +10714,13 @@ var _user$project$FcElementTest$fcElementTests = function () {
 							_user$project$FcElement$getStartShapeId(
 								{
 									id: 2,
-									startPos: _user$project$FcTypes$Global(
-										{ctor: '_Tuple2', _0: 20, _1: 20}),
-									endPos: _user$project$FcTypes$Offset(
-										{ctor: '_Tuple3', _0: 3, _1: 300, _2: 200}),
+									startPos: {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 20, _2: 20},
+									endPos: {
+										ctor: '_Tuple3',
+										_0: _elm_lang$core$Maybe$Just(3),
+										_1: 300,
+										_2: 200
+									},
 									title: 'title'
 								})))
 					])),
@@ -10676,10 +10738,18 @@ var _user$project$FcElementTest$fcElementTests = function () {
 							_user$project$FcElement$getEndShapeId(
 								{
 									id: 2,
-									startPos: _user$project$FcTypes$Offset(
-										{ctor: '_Tuple3', _0: 1, _1: 20, _2: 20}),
-									endPos: _user$project$FcTypes$Offset(
-										{ctor: '_Tuple3', _0: 3, _1: 300, _2: 200}),
+									startPos: {
+										ctor: '_Tuple3',
+										_0: _elm_lang$core$Maybe$Just(1),
+										_1: 20,
+										_2: 20
+									},
+									endPos: {
+										ctor: '_Tuple3',
+										_0: _elm_lang$core$Maybe$Just(3),
+										_1: 300,
+										_2: 200
+									},
 									title: 'title'
 								}))),
 						A2(
@@ -10691,10 +10761,8 @@ var _user$project$FcElementTest$fcElementTests = function () {
 							_user$project$FcElement$getEndShapeId(
 								{
 									id: 2,
-									startPos: _user$project$FcTypes$Global(
-										{ctor: '_Tuple2', _0: 20, _1: 20}),
-									endPos: _user$project$FcTypes$Global(
-										{ctor: '_Tuple2', _0: 300, _1: 200}),
+									startPos: {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 20, _2: 20},
+									endPos: {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 300, _2: 200},
 									title: 'title'
 								})))
 					])),
@@ -10720,26 +10788,40 @@ var _user$project$FcElementTest$fcElementTests = function () {
 								[
 									{
 									id: 1,
-									startPos: _user$project$FcTypes$Offset(
-										{ctor: '_Tuple3', _0: 1, _1: 20, _2: 20}),
-									endPos: _user$project$FcTypes$Global(
-										{ctor: '_Tuple2', _0: 300, _1: 200}),
+									startPos: {
+										ctor: '_Tuple3',
+										_0: _elm_lang$core$Maybe$Just(1),
+										_1: 20,
+										_2: 20
+									},
+									endPos: {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 300, _2: 200},
 									title: 'title'
 								},
 									{
 									id: 2,
-									startPos: _user$project$FcTypes$Offset(
-										{ctor: '_Tuple3', _0: 1, _1: 20, _2: 20}),
-									endPos: _user$project$FcTypes$Offset(
-										{ctor: '_Tuple3', _0: 2, _1: 300, _2: 200}),
+									startPos: {
+										ctor: '_Tuple3',
+										_0: _elm_lang$core$Maybe$Just(1),
+										_1: 20,
+										_2: 20
+									},
+									endPos: {
+										ctor: '_Tuple3',
+										_0: _elm_lang$core$Maybe$Just(2),
+										_1: 300,
+										_2: 200
+									},
 									title: 'title'
 								},
 									{
 									id: 3,
-									startPos: _user$project$FcTypes$Offset(
-										{ctor: '_Tuple3', _0: 1, _1: 20, _2: 20}),
-									endPos: _user$project$FcTypes$Global(
-										{ctor: '_Tuple2', _0: 300, _1: 200}),
+									startPos: {
+										ctor: '_Tuple3',
+										_0: _elm_lang$core$Maybe$Just(1),
+										_1: 20,
+										_2: 20
+									},
+									endPos: {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 300, _2: 200},
 									title: 'title'
 								}
 								]),
@@ -10767,10 +10849,18 @@ var _user$project$FcElementTest$fcElementTests = function () {
 								[
 									{
 									id: 4,
-									startPos: _user$project$FcTypes$Offset(
-										{ctor: '_Tuple3', _0: 8, _1: 20, _2: 20}),
-									endPos: _user$project$FcTypes$Offset(
-										{ctor: '_Tuple3', _0: 3, _1: 300, _2: 200}),
+									startPos: {
+										ctor: '_Tuple3',
+										_0: _elm_lang$core$Maybe$Just(8),
+										_1: 20,
+										_2: 20
+									},
+									endPos: {
+										ctor: '_Tuple3',
+										_0: _elm_lang$core$Maybe$Just(3),
+										_1: 300,
+										_2: 200
+									},
 									title: 'title'
 								}
 								]),
@@ -10846,34 +10936,51 @@ var _user$project$FcElementTest$fcElementTests = function () {
 									[
 										{
 										id: 1,
-										startPos: _user$project$FcTypes$Offset(
-											{ctor: '_Tuple3', _0: 1, _1: 20, _2: 20}),
-										endPos: _user$project$FcTypes$Global(
-											{ctor: '_Tuple2', _0: 300, _1: 200}),
+										startPos: {
+											ctor: '_Tuple3',
+											_0: _elm_lang$core$Maybe$Just(1),
+											_1: 20,
+											_2: 20
+										},
+										endPos: {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 300, _2: 200},
 										title: 'title'
 									},
 										{
 										id: 2,
-										startPos: _user$project$FcTypes$Offset(
-											{ctor: '_Tuple3', _0: 1, _1: 20, _2: 20}),
-										endPos: _user$project$FcTypes$Global(
-											{ctor: '_Tuple2', _0: 330, _1: 240}),
+										startPos: {
+											ctor: '_Tuple3',
+											_0: _elm_lang$core$Maybe$Just(1),
+											_1: 20,
+											_2: 20
+										},
+										endPos: {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 330, _2: 240},
 										title: 'title'
 									},
 										{
 										id: 3,
-										startPos: _user$project$FcTypes$Offset(
-											{ctor: '_Tuple3', _0: 1, _1: 20, _2: 20}),
-										endPos: _user$project$FcTypes$Global(
-											{ctor: '_Tuple2', _0: 300, _1: 200}),
+										startPos: {
+											ctor: '_Tuple3',
+											_0: _elm_lang$core$Maybe$Just(1),
+											_1: 20,
+											_2: 20
+										},
+										endPos: {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 300, _2: 200},
 										title: 'title'
 									},
 										{
 										id: 4,
-										startPos: _user$project$FcTypes$Offset(
-											{ctor: '_Tuple3', _0: 8, _1: 20, _2: 20}),
-										endPos: _user$project$FcTypes$Offset(
-											{ctor: '_Tuple3', _0: 3, _1: 300, _2: 200}),
+										startPos: {
+											ctor: '_Tuple3',
+											_0: _elm_lang$core$Maybe$Just(8),
+											_1: 20,
+											_2: 20
+										},
+										endPos: {
+											ctor: '_Tuple3',
+											_0: _elm_lang$core$Maybe$Just(3),
+											_1: 300,
+											_2: 200
+										},
 										title: 'title'
 									}
 									]),
@@ -10907,26 +11014,40 @@ var _user$project$FcElementTest$fcElementTests = function () {
 									[
 										{
 										id: 1,
-										startPos: _user$project$FcTypes$Offset(
-											{ctor: '_Tuple3', _0: 1, _1: 20, _2: 20}),
-										endPos: _user$project$FcTypes$Global(
-											{ctor: '_Tuple2', _0: 300, _1: 200}),
+										startPos: {
+											ctor: '_Tuple3',
+											_0: _elm_lang$core$Maybe$Just(1),
+											_1: 20,
+											_2: 20
+										},
+										endPos: {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 300, _2: 200},
 										title: 'title'
 									},
 										{
 										id: 3,
-										startPos: _user$project$FcTypes$Offset(
-											{ctor: '_Tuple3', _0: 1, _1: 20, _2: 20}),
-										endPos: _user$project$FcTypes$Global(
-											{ctor: '_Tuple2', _0: 300, _1: 200}),
+										startPos: {
+											ctor: '_Tuple3',
+											_0: _elm_lang$core$Maybe$Just(1),
+											_1: 20,
+											_2: 20
+										},
+										endPos: {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 300, _2: 200},
 										title: 'title'
 									},
 										{
 										id: 4,
-										startPos: _user$project$FcTypes$Offset(
-											{ctor: '_Tuple3', _0: 8, _1: 20, _2: 20}),
-										endPos: _user$project$FcTypes$Offset(
-											{ctor: '_Tuple3', _0: 3, _1: 300, _2: 200}),
+										startPos: {
+											ctor: '_Tuple3',
+											_0: _elm_lang$core$Maybe$Just(8),
+											_1: 20,
+											_2: 20
+										},
+										endPos: {
+											ctor: '_Tuple3',
+											_0: _elm_lang$core$Maybe$Just(3),
+											_1: 300,
+											_2: 200
+										},
 										title: 'title'
 									}
 									]),
@@ -10956,10 +11077,18 @@ var _user$project$FcElementTest$fcElementTests = function () {
 							false,
 							A2(
 								_user$project$FcElement$doesPositionShareElements,
-								_user$project$FcTypes$Offset(
-									{ctor: '_Tuple3', _0: 1, _1: 0, _2: 0}),
-								_user$project$FcTypes$Offset(
-									{ctor: '_Tuple3', _0: 2, _1: 0, _2: 0})))),
+								{
+									ctor: '_Tuple3',
+									_0: _elm_lang$core$Maybe$Just(1),
+									_1: 0,
+									_2: 0
+								},
+								{
+									ctor: '_Tuple3',
+									_0: _elm_lang$core$Maybe$Just(2),
+									_1: 0,
+									_2: 0
+								}))),
 						A2(
 						_elm_community$elm_test$ElmTest$test,
 						'doesPositionShareElements_GlobalPositions_ReturnsFalse',
@@ -10968,10 +11097,8 @@ var _user$project$FcElementTest$fcElementTests = function () {
 							false,
 							A2(
 								_user$project$FcElement$doesPositionShareElements,
-								_user$project$FcTypes$Global(
-									{ctor: '_Tuple2', _0: 0, _1: 0}),
-								_user$project$FcTypes$Global(
-									{ctor: '_Tuple2', _0: 0, _1: 0})))),
+								{ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 0, _2: 0},
+								{ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 0, _2: 0}))),
 						A2(
 						_elm_community$elm_test$ElmTest$test,
 						'doesPositionShareElements_OffsetAndGlobalPositions_ReturnsFalse',
@@ -10980,10 +11107,13 @@ var _user$project$FcElementTest$fcElementTests = function () {
 							false,
 							A2(
 								_user$project$FcElement$doesPositionShareElements,
-								_user$project$FcTypes$Offset(
-									{ctor: '_Tuple3', _0: 1, _1: 0, _2: 0}),
-								_user$project$FcTypes$Global(
-									{ctor: '_Tuple2', _0: 0, _1: 0})))),
+								{
+									ctor: '_Tuple3',
+									_0: _elm_lang$core$Maybe$Just(1),
+									_1: 0,
+									_2: 0
+								},
+								{ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: 0, _2: 0}))),
 						A2(
 						_elm_community$elm_test$ElmTest$test,
 						'doesPositionShareElements_SharedPosition_ReturnsTrue',
@@ -10992,10 +11122,18 @@ var _user$project$FcElementTest$fcElementTests = function () {
 							true,
 							A2(
 								_user$project$FcElement$doesPositionShareElements,
-								_user$project$FcTypes$Offset(
-									{ctor: '_Tuple3', _0: 1, _1: 0, _2: 0}),
-								_user$project$FcTypes$Offset(
-									{ctor: '_Tuple3', _0: 1, _1: 0, _2: 0}))))
+								{
+									ctor: '_Tuple3',
+									_0: _elm_lang$core$Maybe$Just(1),
+									_1: 0,
+									_2: 0
+								},
+								{
+									ctor: '_Tuple3',
+									_0: _elm_lang$core$Maybe$Just(1),
+									_1: 0,
+									_2: 0
+								})))
 					]))
 			]));
 }();
@@ -11138,8 +11276,8 @@ var _user$project$FcGraphics$fcArrowToSvg = F2(
 		var distance = 50 / myStrokeWidth;
 		var _p5 = function () {
 			var _p6 = _p4.endPos;
-			if (_p6.ctor === 'Global') {
-				return {ctor: '_Tuple2', _0: _p6._0._0, _1: _p6._0._1};
+			if (_p6._0.ctor === 'Nothing') {
+				return {ctor: '_Tuple2', _0: _p6._1, _1: _p6._2};
 			} else {
 				var el = A2(_user$project$FcElement$getShapeWithId, model, _p6._0._0);
 				var _p7 = el;
@@ -11147,7 +11285,7 @@ var _user$project$FcGraphics$fcArrowToSvg = F2(
 					return {ctor: '_Tuple2', _0: 0, _1: 0};
 				} else {
 					var _p8 = _p7._0;
-					return {ctor: '_Tuple2', _0: _p6._0._1 + _p8.x, _1: _p6._0._2 + _p8.y};
+					return {ctor: '_Tuple2', _0: _p6._1 + _p8.x, _1: _p6._2 + _p8.y};
 				}
 			}
 		}();
@@ -11155,8 +11293,8 @@ var _user$project$FcGraphics$fcArrowToSvg = F2(
 		var endY = _p5._1;
 		var _p9 = function () {
 			var _p10 = _p4.startPos;
-			if (_p10.ctor === 'Global') {
-				return {ctor: '_Tuple2', _0: _p10._0._0, _1: _p10._0._1};
+			if (_p10._0.ctor === 'Nothing') {
+				return {ctor: '_Tuple2', _0: _p10._1, _1: _p10._2};
 			} else {
 				var el = A2(_user$project$FcElement$getShapeWithId, model, _p10._0._0);
 				var _p11 = el;
@@ -11164,7 +11302,7 @@ var _user$project$FcGraphics$fcArrowToSvg = F2(
 					return {ctor: '_Tuple2', _0: 0, _1: 0};
 				} else {
 					var _p12 = _p11._0;
-					return {ctor: '_Tuple2', _0: _p10._0._1 + _p12.x, _1: _p10._0._2 + _p12.y};
+					return {ctor: '_Tuple2', _0: _p10._1 + _p12.x, _1: _p10._2 + _p12.y};
 				}
 			}
 		}();
@@ -11572,7 +11710,7 @@ var _user$project$FcGraphics$createHtml = F2(
 				_elm_lang$core$List$filterMap,
 				function (x) {
 					var _p18 = x.endPos;
-					if ((_p18.ctor === 'Offset') && (_p18._0.ctor === '_Tuple3')) {
+					if ((_p18.ctor === '_Tuple3') && (_p18._0.ctor === 'Just')) {
 						return _elm_lang$core$Maybe$Just(_p18._0._0);
 					} else {
 						return _elm_lang$core$Maybe$Nothing;
@@ -11984,18 +12122,34 @@ var _user$project$Main$init = {
 			[
 				{
 				id: 1,
-				startPos: _user$project$FcTypes$Offset(
-					{ctor: '_Tuple3', _0: 1, _1: 10, _2: 40}),
-				endPos: _user$project$FcTypes$Offset(
-					{ctor: '_Tuple3', _0: 2, _1: 50, _2: 5}),
+				startPos: {
+					ctor: '_Tuple3',
+					_0: _elm_lang$core$Maybe$Just(1),
+					_1: 10,
+					_2: 40
+				},
+				endPos: {
+					ctor: '_Tuple3',
+					_0: _elm_lang$core$Maybe$Just(2),
+					_1: 50,
+					_2: 5
+				},
 				title: 'Start'
 			},
 				{
 				id: 2,
-				startPos: _user$project$FcTypes$Offset(
-					{ctor: '_Tuple3', _0: 2, _1: 10, _2: 50}),
-				endPos: _user$project$FcTypes$Offset(
-					{ctor: '_Tuple3', _0: 3, _1: 80, _2: 50}),
+				startPos: {
+					ctor: '_Tuple3',
+					_0: _elm_lang$core$Maybe$Just(2),
+					_1: 10,
+					_2: 50
+				},
+				endPos: {
+					ctor: '_Tuple3',
+					_0: _elm_lang$core$Maybe$Just(3),
+					_1: 80,
+					_2: 50
+				},
 				title: 'ijs2'
 			}
 			]),
@@ -12077,10 +12231,18 @@ var _user$project$Main$update = F2(
 									currentLine: _elm_lang$core$Maybe$Just(
 										{
 											ctor: '_Tuple2',
-											_0: _user$project$FcTypes$Offset(
-												{ctor: '_Tuple3', _0: _p7, _1: 0, _2: 0}),
-											_1: _user$project$FcTypes$Offset(
-												{ctor: '_Tuple3', _0: _p7, _1: 0, _2: 0})
+											_0: {
+												ctor: '_Tuple3',
+												_0: _elm_lang$core$Maybe$Just(_p7),
+												_1: 0,
+												_2: 0
+											},
+											_1: {
+												ctor: '_Tuple3',
+												_0: _elm_lang$core$Maybe$Just(_p7),
+												_1: 0,
+												_2: 0
+											}
 										})
 								}),
 							_elm_lang$core$Native_List.fromArray(
@@ -12143,14 +12305,22 @@ var _user$project$Main$update = F2(
 										var _p12 = _p11;
 										var _p15 = _p12._0;
 										var _p13 = _p15;
-										if ((_p13.ctor === 'Offset') && (_p13._0.ctor === '_Tuple3')) {
+										if ((_p13.ctor === '_Tuple3') && (_p13._0.ctor === 'Just')) {
 											var _p14 = _p13._0._0;
 											return {
 												ctor: '_Tuple2',
-												_0: _user$project$FcTypes$Offset(
-													{ctor: '_Tuple3', _0: _p14, _1: offsetX, _2: offsetY}),
-												_1: _user$project$FcTypes$Offset(
-													{ctor: '_Tuple3', _0: _p14, _1: offsetX, _2: offsetY})
+												_0: {
+													ctor: '_Tuple3',
+													_0: _elm_lang$core$Maybe$Just(_p14),
+													_1: offsetX,
+													_2: offsetY
+												},
+												_1: {
+													ctor: '_Tuple3',
+													_0: _elm_lang$core$Maybe$Just(_p14),
+													_1: offsetX,
+													_2: offsetY
+												}
 											};
 										} else {
 											return {ctor: '_Tuple2', _0: _p15, _1: _p12._1};
@@ -12412,8 +12582,12 @@ var _user$project$Main$update = F2(
 								return {
 									ctor: '_Tuple2',
 									_0: _elm_lang$core$Basics$fst(l),
-									_1: _user$project$FcTypes$Offset(
-										{ctor: '_Tuple3', _0: _p22._0, _1: 0, _2: 0})
+									_1: {
+										ctor: '_Tuple3',
+										_0: _elm_lang$core$Maybe$Just(_p22._0),
+										_1: 0,
+										_2: 0
+									}
 								};
 							},
 							model.currentLine);
@@ -12432,8 +12606,12 @@ var _user$project$Main$update = F2(
 								return {
 									ctor: '_Tuple2',
 									_0: _elm_lang$core$Basics$fst(l),
-									_1: _user$project$FcTypes$Offset(
-										{ctor: '_Tuple3', _0: _p22._0, _1: 0, _2: 0})
+									_1: {
+										ctor: '_Tuple3',
+										_0: _elm_lang$core$Maybe$Just(_p22._0),
+										_1: 0,
+										_2: 0
+									}
 								};
 							},
 							model.currentLine);
@@ -12447,53 +12625,56 @@ var _user$project$Main$update = F2(
 								[]));
 				}
 			case 'MouseUp':
-				var _p34 = _p2._0;
-				var _p26 = A2(_elm_lang$core$Debug$log, 'mouseup', _p34);
+				var _p33 = _p2._0;
 				var arrow = A2(
 					_elm_lang$core$Maybe$map,
 					function (l) {
 						return {
-							id: _user$project$FcElement$findFreeId(model.fcShapes),
+							id: _user$project$FcElement$findFreeId(model.fcArrows),
 							startPos: _elm_lang$core$Basics$fst(l),
 							endPos: _elm_lang$core$Basics$snd(l)
 						};
 					},
 					model.currentLine);
 				var h = function () {
-					var _p27 = arrow;
-					if (_p27.ctor === 'Nothing') {
+					var _p26 = arrow;
+					if (_p26.ctor === 'Nothing') {
 						return _elm_lang$core$Native_List.fromArray(
 							[]);
 					} else {
-						var _p33 = _p27._0;
-						var _p28 = _p33.endPos;
-						if ((_p28.ctor === 'Offset') && (_p28._0.ctor === '_Tuple3')) {
-							var _p32 = _p28._0._0;
+						var _p32 = _p26._0;
+						var _p27 = _p32.endPos;
+						if ((_p27.ctor === '_Tuple3') && (_p27._0.ctor === 'Just')) {
+							var _p31 = _p27._0._0;
 							var elid = _user$project$FcElement$findFreeId(model.fcArrows);
-							var element = A2(_user$project$FcElement$getShapeWithId, model, _p32);
-							var _p29 = function () {
-								var _p30 = element;
-								if (_p30.ctor === 'Nothing') {
+							var element = A2(_user$project$FcElement$getShapeWithId, model, _p31);
+							var _p28 = function () {
+								var _p29 = element;
+								if (_p29.ctor === 'Nothing') {
 									return {ctor: '_Tuple2', _0: 0.0, _1: 0.0};
 								} else {
-									var _p31 = _p30._0;
+									var _p30 = _p29._0;
 									return {
 										ctor: '_Tuple2',
-										_0: _elm_lang$core$Basics$toFloat(_p34.x) - _p31.x,
-										_1: _elm_lang$core$Basics$toFloat(_p34.y) - _p31.y
+										_0: _elm_lang$core$Basics$toFloat(_p33.x) - _p30.x,
+										_1: _elm_lang$core$Basics$toFloat(_p33.y) - _p30.y
 									};
 								}
 							}();
-							var offsetX = _p29._0;
-							var offsetY = _p29._1;
-							return A2(_user$project$FcElement$doesPositionShareElements, _p33.startPos, _p33.endPos) ? _elm_lang$core$Native_List.fromArray(
+							var offsetX = _p28._0;
+							var offsetY = _p28._1;
+							return A2(_user$project$FcElement$doesPositionShareElements, _p32.startPos, _p32.endPos) ? _elm_lang$core$Native_List.fromArray(
 								[]) : _elm_lang$core$Native_List.fromArray(
 								[
 									{
 									id: elid,
-									startPos: _p33.startPos,
-									endPos: _user$project$FcTypes$Offset(
-										{ctor: '_Tuple3', _0: _p32, _1: offsetX, _2: offsetY}),
+									startPos: _p32.startPos,
+									endPos: {
+										ctor: '_Tuple3',
+										_0: _elm_lang$core$Maybe$Just(_p31),
+										_1: offsetX,
+										_2: offsetY
+									},
 									title: _elm_lang$core$Basics$toString(elid)
 								}
 								]);
@@ -12516,24 +12697,24 @@ var _user$project$Main$update = F2(
 					_elm_lang$core$Native_List.fromArray(
 						[]));
 			case 'MouseMove':
-				var _p40 = _p2._0;
+				var _p39 = _p2._0;
 				var pos = A2(
 					_user$project$Main$localToGlobal,
 					{
-						x: _elm_lang$core$Basics$toFloat(_p40.x),
-						y: _elm_lang$core$Basics$toFloat(_p40.y)
+						x: _elm_lang$core$Basics$toFloat(_p39.x),
+						y: _elm_lang$core$Basics$toFloat(_p39.y)
 					},
 					model.mainDivOffset);
-				var _p35 = model.dragElement;
-				if (_p35.ctor === 'Nothing') {
+				var _p34 = model.dragElement;
+				if (_p34.ctor === 'Nothing') {
 					return A2(
 						_elm_lang$core$Platform_Cmd_ops['!'],
 						model,
 						_elm_lang$core$Native_List.fromArray(
 							[]));
 				} else {
-					var _p36 = _p35._0;
-					switch (_p36.ctor) {
+					var _p35 = _p34._0;
+					switch (_p35.ctor) {
 						case 'Inner':
 							var m = A4(_user$project$Main$moveElementTo, model, model.dragElement, pos.x - model.dragOffsetX, pos.y - model.dragOffsetY);
 							return A2(
@@ -12542,10 +12723,10 @@ var _user$project$Main$update = F2(
 								_elm_lang$core$Native_List.fromArray(
 									[]));
 						case 'Outer':
-							var element = A2(_user$project$FcElement$getShapeWithId, model, _p36._0);
+							var element = A2(_user$project$FcElement$getShapeWithId, model, _p35._0);
 							var m = function () {
-								var _p37 = element;
-								if (_p37.ctor === 'Nothing') {
+								var _p36 = element;
+								if (_p36.ctor === 'Nothing') {
 									return model;
 								} else {
 									return _elm_lang$core$Native_Utils.update(
@@ -12553,13 +12734,12 @@ var _user$project$Main$update = F2(
 										{
 											currentLine: A2(
 												_elm_lang$core$Maybe$map,
-												function (_p38) {
-													var _p39 = _p38;
+												function (_p37) {
+													var _p38 = _p37;
 													return {
 														ctor: '_Tuple2',
-														_0: _p39._0,
-														_1: _user$project$FcTypes$Global(
-															{ctor: '_Tuple2', _0: pos.x, _1: pos.y})
+														_0: _p38._0,
+														_1: {ctor: '_Tuple3', _0: _elm_lang$core$Maybe$Nothing, _1: pos.x, _2: pos.y}
 													};
 												},
 												model.currentLine)

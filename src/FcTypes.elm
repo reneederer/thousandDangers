@@ -22,9 +22,8 @@ type alias FcShape =
     , text : String
     , title : String }
 
-type FcPos = 
-      Offset (Id, Float, Float)
-    | Global ( Float, Float)
+type alias FcPos = 
+      (Maybe Id, Float, Float)
 
 type alias FcArrow = 
     { id : Id

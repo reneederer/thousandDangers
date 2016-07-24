@@ -35,12 +35,12 @@ decodeElements =
                 { id=id
                 , startPos=
                     case source_id of
-                        Nothing -> Global (source_offset_x, source_offset_y)
-                        Just id -> Offset (id, source_offset_x, source_offset_y)
+                        Nothing -> (Nothing, source_offset_x, source_offset_y)
+                        Just id -> (Just id, source_offset_x, source_offset_y)
                 , endPos=
                     case destination_id of
-                        Nothing -> Global (destination_offset_x, destination_offset_y)
-                        Just id -> Offset (id, destination_offset_x, destination_offset_y)
+                        Nothing -> (Nothing, destination_offset_x, destination_offset_y)
+                        Just id -> (Just id, destination_offset_x, destination_offset_y)
                 , title=title})
                 ("id" := Json.int)
                 ("source_id" := Json.oneOf [Json.null Nothing, Json.map Just Json.int])
@@ -79,12 +79,12 @@ saveElements model =
         toArrowObject a = 
             let (source_id, source_offset_x, source_offset_y) = 
                 case a.startPos of
-                    Offset (sid, sx, sy) -> (Json.Encode.int sid, sx, sy)
-                    Global (sx, sy) -> (Json.Encode.null, sx, sy)
+                    (Just sid, sx, sy) -> (Json.Encode.int sid, sx, sy)
+                    (Nothing, sx, sy) -> (Json.Encode.null, sx, sy)
                 (destination_id, destination_offset_x, destination_offset_y) = 
                 case a.endPos of
-                    Offset (eid, ex, ey) -> (Json.Encode.int eid, ex, ey)
-                    Global (ex, ey) -> (Json.Encode.null, ex, ey)
+                    (Just eid, ex, ey) -> (Json.Encode.int eid, ex, ey)
+                    (Nothing, ex, ey) -> (Json.Encode.null, ex, ey)
             in
                 object [ ("id", Json.Encode.int a.id)
                        , ("source_id", source_id)

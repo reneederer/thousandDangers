@@ -129,7 +129,7 @@ createHtml model id =
                 let arrows = arrowsWithStartShape model id
                     newIds = List.filterMap (\x ->
                                             case x.endPos of
-                                                Offset (endShapeId, _, _) -> Just endShapeId
+                                                (Just endShapeId, _, _) -> Just endShapeId
                                                 _ -> Nothing) arrows
                 in
                     case shape.shapeType of
@@ -140,7 +140,7 @@ createHtml model id =
                        --     (List.foldl
                        --         (\el state ->
                        --             case el.endPos of
-                       --                 Offset (endId, _, _) ->
+                       --                 (Just endId, _, _) ->
                        --                     Html.p [] [Html.a [Html.Attributes.href "#", Html.Events.onClick (DownMsg {areaType=Inner, id=FcShapeId endId})] [Html.text el.title]]::state
                        --                 _ -> state
                        --         ) [] arrows
@@ -155,8 +155,8 @@ fcArrowToSvg : Model -> FcArrow -> Svg.Svg Msg
 fcArrowToSvg model {id, startPos, endPos, title} = 
     let (startX, startY) = 
         case startPos of
-            Global (x, y) -> (x, y)
-            Offset (id, x, y) ->
+            (Nothing, x, y) -> (x, y)
+            (Just id, x, y) ->
                 let el = getShapeWithId model id
                 in
                     case el of
@@ -164,8 +164,8 @@ fcArrowToSvg model {id, startPos, endPos, title} =
                         Just e -> (x + e.x, y + e.y)
         (endX, endY) = 
             case endPos of
-                Global (x, y) -> (x, y)
-                Offset (id, x, y) ->
+                (Nothing, x, y) -> (x, y)
+                (Just id, x, y) ->
                     let el = getShapeWithId model id
                     in
                         case el of

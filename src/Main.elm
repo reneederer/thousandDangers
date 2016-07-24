@@ -36,8 +36,8 @@ init =
             , ({id=3, shapeType=Start, x=340,y=290,text="Noch ein Element",title="Noch ein Element"})
             ]
         , fcArrows =
-            [ ({id=1, startPos= Offset (1, 10, 40), endPos=Offset (2, 50, 5), title="Start"})
-            , ({id=2, startPos=Offset (2, 10, 50), endPos=Offset (3, 80, 50), title="ijs2"})
+            [ ({id=1, startPos= (Just 1, 10, 40), endPos=(Just 2, 50, 5), title="Start"})
+            , ({id=2, startPos=(Just 2, 10, 50), endPos=(Just 3, 80, 50), title="ijs2"})
             ]
         , dragElement=Nothing
         , dragOffsetX=0
@@ -62,7 +62,7 @@ update msg model =
                     {model | dragElement=Just <| Inner id, selectedElementId=Just <| FcShapeId id, currentLine=Nothing } ! []
                 Outer id ->
                     let _ = Debug.log "Outer" id in
-                    {model | dragElement=Just <| Outer id, selectedElementId=Just <| FcShapeId id, currentLine=Just (Offset (id, 0, 0), Offset (id, 0, 0)) } ! []
+                    {model | dragElement=Just <| Outer id, selectedElementId=Just <| FcShapeId id, currentLine=Just ((Just id, 0, 0), (Just id, 0, 0)) } ! []
                 _ -> model ! []
         MouseDown lpos->
             let pos = localToGlobal {x=toFloat lpos.x, y=toFloat lpos.y} model.mainDivOffset 
@@ -87,7 +87,7 @@ update msg model =
                                     , dragOffsetY=offsetY
                                     , currentLine=Maybe.map (\(s, e) -> 
                                                         case s of 
-                                                            Offset (id, x, y) -> (Offset (id, offsetX, offsetY), Offset (id, offsetX, offsetY))
+                                                            (Just id, x, y) -> ((Just id, offsetX, offsetY), (Just id, offsetX, offsetY))
                                                             _ -> (s, e))
                                          model.currentLine } ! []
                     _ ->
@@ -144,21 +144,20 @@ update msg model =
                 ArrowEnd id -> model ! []
                 ArrowMiddle id -> model ! []
                 Inner id ->
-                    let newCurrentLine = Maybe.map (\l -> (fst l, Offset (id, 0, 0))) model.currentLine
+                    let newCurrentLine = Maybe.map (\l -> (fst l, (Just id, 0, 0))) model.currentLine
                         _ = Debug.log "currentLine" newCurrentLine in
                     { model | dragElement=Nothing, currentLine=newCurrentLine } ! []
                 Outer id ->
-                    let newCurrentLine = Maybe.map (\l -> (fst l, Offset (id, 0, 0))) model.currentLine
+                    let newCurrentLine = Maybe.map (\l -> (fst l, (Just id, 0, 0))) model.currentLine
                         _ = Debug.log "currentLine" newCurrentLine
                     in { model | dragElement=Nothing, currentLine=newCurrentLine } ! []
         MouseUp pos ->
-            let arrow = Maybe.map (\l -> { id=findFreeId model.fcShapes, startPos=(fst l), endPos=(snd l) }) model.currentLine
-                _ = Debug.log "mouseup" pos
+            let arrow = Maybe.map (\l -> setArrowEnd { id=findFreeId model.fcArrows, startPos=(fst l), endPos=(snd l) }) model.currentLine
                 h = case arrow of 
                     Nothing -> []
                     Just a ->
                         case a.endPos of
-                            Offset (id, _, _) ->
+                            (Just id, _, _) ->
                                 let element = getShapeWithId model id
                                     (offsetX, offsetY) = 
                                         case element of
@@ -166,7 +165,7 @@ update msg model =
                                             Just el -> (toFloat pos.x - el.x, toFloat pos.y - el.y)
                                     elid = findFreeId model.fcArrows
                                 in
-                                    if (doesPositionShareElements a.startPos a.endPos) then [] else [{id=elid, startPos=a.startPos, endPos=Offset (id, offsetX, offsetY), title=toString elid}]
+                                    if (doesPositionShareElements a.startPos a.endPos) then [] else [{id=elid, startPos=a.startPos, endPos=(Just id, offsetX, offsetY), title=toString elid}]
                             _ -> []
             in
                 let newModel = {model | dragElement=Nothing, fcArrows=(h++model.fcArrows), currentLine=Nothing }
@@ -189,7 +188,7 @@ update msg model =
                                     case element of
                                         Nothing -> model
                                         Just el -> 
-                                            { model | currentLine=(Maybe.map (\(startPos, _) -> (startPos, Global (pos.x, pos.y))) model.currentLine)}
+                                            { model | currentLine=(Maybe.map (\(startPos, _) -> (startPos, (Nothing, pos.x, pos.y))) model.currentLine)}
                             in
                                 m ! []
                         _ -> model ! []

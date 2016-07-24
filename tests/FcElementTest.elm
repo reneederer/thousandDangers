@@ -44,23 +44,23 @@ setup =
                    }
                  ]
     , fcArrows = [ { id=1
-                   , startPos=Offset (1, 20, 20)
-                   , endPos=Global (300, 200)
+                   , startPos=(Just 1, 20, 20)
+                   , endPos=(Nothing, 300, 200)
                    , title="title"
                    }
                  , { id=2
-                   , startPos=Offset (1, 20, 20)
-                   , endPos=Offset (2, 300, 200)
+                   , startPos=(Just 1, 20, 20)
+                   , endPos=(Just 2, 300, 200)
                    , title="title"
                    }
                  , { id=3
-                   , startPos=Offset (1, 20, 20)
-                   , endPos=Global (300, 200)
+                   , startPos=(Just 1, 20, 20)
+                   , endPos=(Nothing, 300, 200)
                    , title="title"
                    }
                  , { id=4
-                   , startPos=Offset (8, 20, 20)
-                   , endPos=Offset (3, 300, 200)
+                   , startPos=(Just 8, 20, 20)
+                   , endPos=(Just 3, 300, 200)
                    , title="title"
                    }
                  ]
@@ -88,21 +88,21 @@ fcElementTests =
             ]
         , suite "getArrowWithId"
             [ test "getArrowWithId_NonexistentArrow_ReturnsNothing" (assertEqual Nothing (getArrowWithId model 12))
-            , test "getArrowWithId_ExistingArrow_ReturnsArrow" (assertEqual (Just { id=1, startPos=Offset (1, 20, 20), endPos=Global (300, 200), title="title" }) (getArrowWithId model 1))
+            , test "getArrowWithId_ExistingArrow_ReturnsArrow" (assertEqual (Just { id=1, startPos=(Just 1, 20, 20), endPos=(Nothing, 300, 200), title="title" }) (getArrowWithId model 1))
             ]
         , suite "getElementWithId"
             [ test "getElementWithId_NonexistentShapeElement_ReturnsNothing" (assertEqual Nothing (getElementWithId model (FcShapeId 12)))
             , test "getElementWithId_ExistingShapeElement_ReturnsShapeElement" (assertEqual (Just (ShapeElement { id=1, shapeType=Start,x=0.0, y=0.0, text="text", title="title" })) (getElementWithId model (FcShapeId 1)))
             , test "getElementWithId_NonexistentArrowElement_ReturnsNothing" (assertEqual Nothing (getElementWithId model (FcArrowId 12)))
-            , test "getElementWithId_ExistingArrowElement_ReturnsArrowElement" (assertEqual (Just (ArrowElement { id=1, startPos=Offset (1, 20, 20), endPos=Global (300, 200), title="title" })) (getElementWithId model (FcArrowId 1)))
+            , test "getElementWithId_ExistingArrowElement_ReturnsArrowElement" (assertEqual (Just (ArrowElement { id=1, startPos=(Just 1, 20, 20), endPos=(Nothing, 300, 200), title="title" })) (getElementWithId model (FcArrowId 1)))
             ]
         , suite "getStartShapeId"
-            [ test "getStartShapeId_OffsetArrow_ReturnsId" (assertEqual (Just 1) (getStartShapeId {id=2, startPos=Offset (1, 20, 20), endPos=Offset (3, 300, 200), title="title" }))
-            , test "getStartShapeId_OffsetArrow_ReturnsId" (assertEqual Nothing (getStartShapeId {id=2, startPos=Global ( 20, 20), endPos=Offset (3, 300, 200), title="title" }))
+            [ test "getStartShapeId_OffsetArrow_ReturnsId" (assertEqual (Just 1) (getStartShapeId {id=2, startPos=(Just 1, 20, 20), endPos=(Just 3, 300, 200), title="title" }))
+            , test "getStartShapeId_OffsetArrow_ReturnsId" (assertEqual Nothing (getStartShapeId {id=2, startPos=(Nothing,  20, 20), endPos=(Just 3, 300, 200), title="title" }))
             ]
         , suite "getEndShapeId"
-            [ test "getEndShapeId_OffsetArrow_ReturnsId" (assertEqual (Just 3) (getEndShapeId {id=2, startPos=Offset (1, 20, 20), endPos=Offset (3, 300, 200), title="title" }))
-            , test "getEndShapeId_OffsetArrow_ReturnsId" (assertEqual Nothing (getEndShapeId {id=2, startPos=Global ( 20, 20), endPos=Global (300, 200), title="title" }))
+            [ test "getEndShapeId_OffsetArrow_ReturnsId" (assertEqual (Just 3) (getEndShapeId {id=2, startPos=(Just 1, 20, 20), endPos=(Just 3, 300, 200), title="title" }))
+            , test "getEndShapeId_OffsetArrow_ReturnsId" (assertEqual Nothing (getEndShapeId {id=2, startPos=(Nothing,  20, 20), endPos=(Nothing, 300, 200), title="title" }))
             ]
         , suite "arrowsWithStartShape"
             [ test "arrowsWithStartShape_NonexistentId_ReturnsEmptyList" (assertEqual [] (arrowsWithStartShape model 122))
@@ -110,18 +110,18 @@ fcElementTests =
                 (assertEqual
                     [
                        { id=1
-                       , startPos=Offset (1, 20, 20)
-                       , endPos=Global (300, 200)
+                       , startPos=(Just 1, 20, 20)
+                       , endPos=(Nothing, 300, 200)
                        , title="title"
                        }
                      , { id=2
-                       , startPos=Offset (1, 20, 20)
-                       , endPos=Offset (2, 300, 200)
+                       , startPos=(Just 1, 20, 20)
+                       , endPos=(Just 2, 300, 200)
                        , title="title"
                        }
                      , { id=3
-                       , startPos=Offset (1, 20, 20)
-                       , endPos=Global (300, 200)
+                       , startPos=(Just 1, 20, 20)
+                       , endPos=(Nothing, 300, 200)
                        , title="title"
                        }
                     ]
@@ -138,8 +138,8 @@ fcElementTests =
                 (assertEqual
                     [
                        { id=4
-                       , startPos=Offset (8, 20, 20)
-                       , endPos=Offset (3, 300, 200)
+                       , startPos=(Just 8, 20, 20)
+                       , endPos=(Just 3, 300, 200)
                        , title="title"
                        }
                     ]
@@ -214,23 +214,23 @@ fcElementTests =
                         ]
                     , fcArrows =
                         [ { id=1
-                          , startPos=Offset (1, 20, 20)
-                          , endPos=Global (300, 200)
+                          , startPos=(Just 1, 20, 20)
+                          , endPos=(Nothing, 300, 200)
                           , title="title"
                           }
                         , { id=2
-                          , startPos=Offset (1, 20, 20)
-                          , endPos=Global (330, 240)
+                          , startPos=(Just 1, 20, 20)
+                          , endPos=(Nothing, 330, 240)
                           , title="title"
                           }
                         , { id=3
-                          , startPos=Offset (1, 20, 20)
-                          , endPos=Global (300, 200)
+                          , startPos=(Just 1, 20, 20)
+                          , endPos=(Nothing, 300, 200)
                           , title="title"
                           }
                         , { id=4
-                          , startPos=Offset (8, 20, 20)
-                          , endPos=Offset (3, 300, 200)
+                          , startPos=(Just 8, 20, 20)
+                          , endPos=(Just 3, 300, 200)
                           , title="title"
                           }
                         ]
@@ -288,18 +288,18 @@ fcElementTests =
                         ]
                     , fcArrows =
                         [ { id=1
-                          , startPos=Offset (1, 20, 20)
-                          , endPos=Global (300, 200)
+                          , startPos=(Just 1, 20, 20)
+                          , endPos=(Nothing, 300, 200)
                           , title="title"
                           }
                         , { id=3
-                          , startPos=Offset (1, 20, 20)
-                          , endPos=Global (300, 200)
+                          , startPos=(Just 1, 20, 20)
+                          , endPos=(Nothing, 300, 200)
                           , title="title"
                           }
                         , { id=4
-                          , startPos=Offset (8, 20, 20)
-                          , endPos=Offset (3, 300, 200)
+                          , startPos=(Just 8, 20, 20)
+                          , endPos=(Just 3, 300, 200)
                           , title="title"
                           }
                         ]
@@ -322,32 +322,32 @@ fcElementTests =
                 (assertEqual
                     False
                     (doesPositionShareElements
-                        (Offset (1, 0, 0))
-                        (Offset (2, 0, 0))
+                        (Just 1, 0, 0)
+                        (Just 2, 0, 0)
                     )
                 )
             , test "doesPositionShareElements_GlobalPositions_ReturnsFalse"
                 (assertEqual
                     False
                     (doesPositionShareElements
-                        (Global (0, 0))
-                        (Global (0, 0))
+                        (Nothing, 0, 0)
+                        (Nothing, 0, 0)
                     )
                 )
             , test "doesPositionShareElements_OffsetAndGlobalPositions_ReturnsFalse"
                 (assertEqual
                     False
                     (doesPositionShareElements
-                        (Offset (1, 0, 0))
-                        (Global (0, 0))
+                        (Just 1, 0, 0)
+                        (Nothing, 0, 0)
                     )
                 )
             , test "doesPositionShareElements_SharedPosition_ReturnsTrue"
                 (assertEqual
                     True
                     (doesPositionShareElements
-                        (Offset (1, 0, 0))
-                        (Offset (1, 0, 0))
+                        (Just 1, 0, 0)
+                        (Just 1, 0, 0)
                     )
                 )
             ]
