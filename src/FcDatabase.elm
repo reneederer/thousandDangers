@@ -16,7 +16,8 @@ loadElements =
         decodeElements
         "http://localhost/elm/thousandDangers/src/db.php"
         (Http.multipart
-            [Http.stringData "action" "load"
+            [
+                Http.stringData "action" "load"
             ])
 
 
@@ -69,6 +70,7 @@ readShapeType s =
 saveElements : Model -> Task Http.RawError Http.Response
 saveElements model = 
     let toShapeObject s = 
+            let _ = Debug.log "s" s in
             object [ ("id", Json.Encode.int s.id)
                , ("shapeType", Json.Encode.string (toString s.shapeType))
                , ("x", Json.Encode.float s.x)

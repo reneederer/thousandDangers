@@ -21,7 +21,7 @@ main =
     Html.App.program
     { init = init
     , view = view
-    , update = update
+   , update = update
     , subscriptions = subscriptions
     }
 
@@ -116,8 +116,13 @@ update msg model =
                       } ! []
                 67 ->
                     let x = (saveElements model |> perform (\a -> HttpFailure (toString a)) (\a -> HttpFailure (toString a)))
+                        _ = Debug.log "x" x
                     in
                         model ! [x]
+                68 ->
+                    let _ = Debug.log "fcShapes" model.fcShapes
+                    in
+                        model ! []
                 46 -> (Maybe.withDefault model (Maybe.map (removeElement model) model.selectedElementId)) ! []
                 c -> model ! []
         SetScrollPosition s -> 
@@ -125,8 +130,13 @@ update msg model =
         ScrollPositionTold scrollOffset ->
             Debug.log (toString scrollOffset.x)
             { model | mainDivOffset = scrollOffset } ! []
-        HttpSuccess s -> {model | fcShapes=(fst s), fcArrows=(snd s)} ! []
+        HttpSuccess s ->
+            let _ = Debug.log "success" s
+            in
+            { model | fcShapes=(fst s), fcArrows=(snd s) } ! []
         HttpFailure s -> 
+            let _ = Debug.log "Failed to load" s
+            in
             model ! []
         TitleChanged s ->
             let m = { model | fcShapes = List.map (\el -> if Just (FcShapeId el.id) == model.selectedElementId then {el | title = s} else el) model.fcShapes}
@@ -145,14 +155,16 @@ update msg model =
                 ArrowMiddle id -> model ! []
                 Inner id ->
                     let newCurrentLine = Maybe.map (\l -> (fst l, (Just id, 0, 0))) model.currentLine
-                        _ = Debug.log "currentLine" newCurrentLine in
+                        _ = Debug.log "upMsg currentLine" "hallo"
+                    in
                     { model | dragElement=Nothing, currentLine=newCurrentLine } ! []
                 Outer id ->
                     let newCurrentLine = Maybe.map (\l -> (fst l, (Just id, 0, 0))) model.currentLine
-                        _ = Debug.log "currentLine" newCurrentLine
+                        _ = Debug.log "upMsg currentLine" "hallo"
                     in { model | dragElement=Nothing, currentLine=newCurrentLine } ! []
         MouseUp pos ->
-            let arrow = Maybe.map (\l -> setArrowEnd { id=findFreeId model.fcArrows, startPos=(fst l), endPos=(snd l) }) model.currentLine
+            let arrow = Maybe.map (\l -> { id=findFreeId model.fcArrows, startPos=(fst l), endPos=(snd l) }) model.currentLine
+                _ = Debug.log "mouseup " model.currentLine
                 h = case arrow of 
                     Nothing -> []
                     Just a ->

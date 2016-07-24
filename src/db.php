@@ -1,8 +1,6 @@
 <?php
-    header('Access-Control-Allow-Origin: *');
     session_start();
-    $_SESSION['user_id'] = 1;
-    $_SESSION['book_name'] = '1000 Gefahren';
+    header('Access-Control-Allow-Origin: *');
     ini_set('display_startup_errors', 1);
     ini_set('display_errors', 1);
     error_reporting(-1);
@@ -25,7 +23,42 @@
     }
 
 
+function get_user_id($name, $password)
+{
+    global $conn;
+    $statement = $conn->prepare('
+        select id
+        from user
+        where name = :name
+          and password = :password
+        limit 1');
+    $statement->bindParam(':name', $name);
+    $statement->bindParam(':password', $password);
+    $result = $statement->execute();
+    $result = $statement->setFetchMode(PDO::FETCH_ASSOC); 
+    $rows = $statement->fetchAll();
+    if(count($rows) === 1)
+    {
+        return $rows[0]['id'];
+    }
+    return -1;
+}
 
+function create_user($name, $password, $email)
+{
+    global $conn;
+    if(get_user_id($name, $password) !== -1)
+    {
+        return false;
+    }
+    $statement = $conn->prepare('
+        insert into user (name, password, email) values(:name, :password, :email)');
+    $statement->bindParam(':name', $name);
+    $statement->bindParam(':password', $password);
+    $statement->bindParam(':email', $email);
+    $statement->execute();
+    return true;
+}
 
 
 function load_fc_shapes()
@@ -36,12 +69,13 @@ function load_fc_shapes()
         from fc_shape
         join book
           on fc_shape.book_id = book.id
-        join user
-           on book.user_id = :user_id
         join fc_shape_type
           on fc_shape.fc_shape_type_id = fc_shape_type.id
         where
-          book_id = (select max(book.id) from book where book.name = :book_name)');
+          book_id = (select max(book.id)
+                     from book
+                     where book.name = :book_name
+                     and book.user_id = :user_id)');
     $statement->bindParam(':user_id', $_SESSION['user_id']);
     $statement->bindParam(':book_name', $_SESSION['book_name']);
     $result = $statement->execute();
@@ -54,15 +88,22 @@ function load_fc_arrows()
 {
     global $conn;
     $statement = $conn->prepare('
-        select fc_arrow.id, fc_arrow.source_id, fc_arrow.destination_id, fc_arrow.source_offset_x, fc_arrow.source_offset_y, fc_arrow.destination_offset_x, fc_arrow.destination_offset_y, fc_arrow.title
+        select fc_arrow.id
+             , fc_arrow.source_id
+             , fc_arrow.destination_id
+             , fc_arrow.source_offset_x
+             , fc_arrow.source_offset_y
+             , fc_arrow.destination_offset_x
+             , fc_arrow.destination_offset_y
+             , fc_arrow.title
         from fc_arrow
         join book
           on fc_arrow.book_id = book.id
-        join user
-          on book.user_id = :user_id
         where
-          fc_arrow.book_id = (select max(book.id) from book) 
-          and book.name = :book_name');
+          fc_arrow.book_id = (select max(book.id)
+                              from book
+                              where book.name = :book_name
+                              and book.user_id = :user_id)'); 
     $statement->bindParam(':user_id', $_SESSION['user_id']);
     $statement->bindParam(':book_name', $_SESSION['book_name']);
     $result = $statement->execute();
@@ -70,13 +111,28 @@ function load_fc_arrows()
     $rows = $statement->fetchAll();
     return $rows;
 }
+
+
+
+
+
+
 function save_fc_shapes($fc_shapes)
 {
     global $conn;
+
+
+    $statement = $conn->prepare('select max(id) as max_book_id from book');
+    $result = $statement->execute();
+    $result = $statement->setFetchMode(PDO::FETCH_ASSOC); 
+    $rows = $statement->fetchAll();
+    $nextBookId = ((count($rows) === 0) ? 1 : ($rows[0]['max_book_id'] + 1));
+
     $statement = $conn->prepare('
-        insert into book(user_id, name, creation_date) values( :user_id, :book_name, now())');
-    $statement->bindParam(':book_name', $_SESSION['book_name']);
+        insert into book(id, user_id, name, creation_date) values(:next_book_id, :user_id, :book_name, now())');
+    $statement->bindParam(':next_book_id', $nextBookId);
     $statement->bindParam(':user_id', $_SESSION['user_id']);
+    $statement->bindParam(':book_name', $_SESSION['book_name']);
     $statement->execute();
     if(is_null($fc_shapes))
     {
@@ -87,9 +143,9 @@ function save_fc_shapes($fc_shapes)
         $statement = $conn->prepare('
             insert into fc_shape
               (id, book_id, x, y, fc_shape_type_id, title, text)
-            values (:id, (select max(book.id) from book where book.name = :book_name), :x, :y, (select id from fc_shape_type where fc_shape_type.name = :type), :title, :text)');
+            values (:id, :max_book_id, :x, :y, (select id from fc_shape_type where fc_shape_type.name = :type), :title, :text)');
         $statement->bindParam(':id', $fc_shape['id']);
-        $statement->bindParam(':book_name', $_SESSION['book_name']);
+        $statement->bindParam(':max_book_id', $nextBookId);
         $statement->bindParam(':x', $fc_shape['x']);
         $statement->bindParam(':y', $fc_shape['y']);
         $statement->bindParam(':type', $fc_shape['shapeType']);
@@ -110,11 +166,12 @@ function save_fc_arrows($fc_arrows)
         $statement = $conn->prepare('
             insert into fc_arrow
               (id, source_id, destination_id, book_id, source_offset_x, source_offset_y, destination_offset_x, destination_offset_y, title)
-            values (:id, :source_id, :destination_id, (select max(book.id) from book where book.name = :book_name), :source_offset_x, :source_offset_y, :destination_offset_x, :destination_offset_y, :title)');
+            values (:id, :source_id, :destination_id, (select max(book.id) from book where book.name = :book_name and book.user_id = :user_id), :source_offset_x, :source_offset_y, :destination_offset_x, :destination_offset_y, :title)');
         $statement->bindParam(':id', $fc_arrow['id']);
         $statement->bindParam(':source_id', $fc_arrow['source_id']);
         $statement->bindParam(':destination_id', $fc_arrow['destination_id']);
         $statement->bindParam(':book_name', $_SESSION['book_name']);
+        $statement->bindParam(':user_id', $_SESSION['user_id']);
         $statement->bindParam(':source_offset_x', $fc_arrow['source_offset_x']);
         $statement->bindParam(':source_offset_y', $fc_arrow['source_offset_y']);
         $statement->bindParam(':destination_offset_x', $fc_arrow['destination_offset_x']);
