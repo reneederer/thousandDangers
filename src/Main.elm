@@ -32,8 +32,8 @@ init =
     ({
         fcShapes =
             [ ({id=1, shapeType=Start, x=40,y=90,text="abc",title="8"})
-            , ({id=2, shapeType=Start, x=40,y=490,text="def",title="treasdfasdf2"})
-            , ({id=3, shapeType=Start, x=340,y=290,text="Noch ein Element",title="Noch ein Element"})
+            , ({id=2, shapeType=Action, x=40,y=490,text="def",title="treasdfasdf2"})
+            , ({id=3, shapeType=Condition, x=340,y=290,text="Noch ein Element",title="Noch ein Element"})
             ]
         , fcArrows =
             [ ({id=1, startPos= (Just 1, 10, 40), endPos=(Just 2, 50, 5), title="Start"})
@@ -45,10 +45,10 @@ init =
         , selectedElementId= Just <| FcShapeId 1
         , currentLine=Nothing
         , mainDivOffset={x=0.0, y=0.0}
-        , graphicsSettings = { fontSize = 28.0
+        , graphicsSettings = { fontSize = 38.0
                              , fontFamily = "Courier"
-                             , innerPadding = 40.0
-                             , outerPadding = 40.0
+                             , innerPadding = 25.0
+                             , outerPadding = 25.0
                              }
     }, Cmd.none)
 
@@ -95,15 +95,15 @@ update msg model =
         KeyMsg code ->
             case code of 
                 65 -> { model | fcShapes =
-                                             { id=findFreeId model.fcShapes, shapeType=Start, x=0.0, y=0.0, text="", title="Aktion" } 
+                                             { id=findFreeId model.fcShapes, shapeType=Action, x=0.0, y=0.0, text="", title="Aktion" } 
                                              :: model.fcShapes
                       } ! []
                 66 -> { model | fcShapes =
-                                             { id=findFreeId model.fcShapes, shapeType=Start, x=0.0, y=0.0, text="", title="Bedingung" } 
+                                             { id=findFreeId model.fcShapes, shapeType=Condition, x=0.0, y=0.0, text="", title="Bedingung" } 
                                              :: model.fcShapes
                       } ! []
                 69 -> { model | fcShapes =
-                                             { id=findFreeId model.fcShapes, shapeType=Start, x=0.0, y=0.0, text="", title="Ende" } 
+                                             { id=findFreeId model.fcShapes, shapeType=End, x=0.0, y=0.0, text="", title="Ende" } 
                                              :: model.fcShapes
                       } ! []
                 76 ->
@@ -174,7 +174,7 @@ update msg model =
                                     (offsetX, offsetY) = 
                                         case element of
                                             Nothing -> (0.0, 0.0)
-                                            Just el -> (toFloat pos.x - el.x, toFloat pos.y - el.y)
+                                            Just el -> (toFloat pos.x - el.x + model.mainDivOffset.x, toFloat pos.y - el.y + model.mainDivOffset.y)
                                     elid = findFreeId model.fcArrows
                                 in
                                     if (doesPositionShareElements a.startPos a.endPos) then [] else [{id=elid, startPos=a.startPos, endPos=(Just id, offsetX, offsetY), title=toString elid}]

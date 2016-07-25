@@ -27,6 +27,7 @@ view model =
                    , Html.Attributes.tabindex 0
                    , Html.Events.on "keydown" (Html.Events.keyCode |> Json.map (\keyCode -> KeyMsg keyCode))
                    , Html.Events.on "scroll" (Json.succeed (SetScrollPosition "mainEl"))
+                   , Html.Events.on "focus" (Json.succeed (SetScrollPosition "mainEl"))
                    , Html.Attributes.style [("width", "70%"), ("height", "80%"),  ("overflow", "scroll")]] [
         Html.div
             [ Html.Attributes.style
@@ -115,18 +116,18 @@ createHtml model id =
                                                 _ -> Nothing) arrows
                 in
                     case shape.shapeType of
-                       -- Condition ->
-                       --     (Html.p
-                       --         [Html.Attributes.id (toString id)]
-                       --         [text shape.text])::
-                       --     (List.foldl
-                       --         (\el state ->
-                       --             case el.endPos of
-                       --                 (Just endId, _, _) ->
-                       --                     Html.p [] [Html.a [Html.Attributes.href "#", Html.Events.onClick (DownMsg {areaType=Inner, id=FcShapeId endId})] [Html.text el.title]]::state
-                       --                 _ -> state
-                       --         ) [] arrows
-                       --     )
+                        Condition ->
+                            (Html.p
+                                [Html.Attributes.id (toString id)]
+                                [text shape.text])::
+                            (List.foldl
+                                (\el state ->
+                                    case el.endPos of
+                                        (Just endId, _, _) ->
+                                            Html.p [] [Html.a [Html.Attributes.href "#", Html.Events.onClick (DownMsg <| Inner endId)] [Html.text el.title]]::state
+                                        _ -> state
+                                ) [] arrows
+                            )
                         _ -> 
                             (Html.p
                                 [Html.Attributes.id (toString id)] [text shape.text])::
@@ -242,6 +243,7 @@ fcShapeToSvg model fcShape =
         strokeColor =
             if model.selectedElementId == Just (FcShapeId fcShape.id) then "red" else outerColor
         textColor = "red"
+        myStrokeDashArray = if model.selectedElementId == Just (FcShapeId fcShape.id) then "10, 10" else "0, 0"
     in
     case fcShape.shapeType of
         Start ->
@@ -272,7 +274,7 @@ fcShapeToSvg model fcShape =
                          ,  rx "30"
                          , ry "30"
                          , stroke strokeColor
-                         , strokeDasharray "10,10"
+                         , strokeDasharray myStrokeDashArray
                          , fill outerColor
                          ] [],
                     rect [ Html.Events.onWithOptions
@@ -302,114 +304,200 @@ fcShapeToSvg model fcShape =
                           , x (toString (fcShape.x + model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding))
                           , y (toString (fcShape.y+model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding + textHeight / 2 + model.graphicsSettings.fontSize/3))
                           , fill textColor] [Svg.text fcShape.title]]
---        Action ->
---            let (textWidth, textHeight) = getTextDimension fcShape.title model.graphicsSettings.fontFamily model.graphicsSettings.fontSize
---                innerShapeWidth = textWidth + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
---                innerShapeHeight = textHeight + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
---                outerShapeWidth = innerShapeWidth + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
---                outerShapeHeight = innerShapeHeight + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
---            in
---                g [ pointerEvents "all"] [
---                    rect [ onMouseDown (DownMsg <| fcShape.id)
---                          , onMouseUp (UpMsg <| fcShape.id)
---                         , x (toString fcShape.x)
---                         , y (toString <| fcShape.y)
---                         , width <| toString outerShapeWidth
---                         , height <| toString outerShapeHeight
---                         , stroke strokeColor
---                         , strokeDasharray "10,10"
---                         , fill outerColor] [],
---                    rect [ onMouseDown (DownMsg <| fcShape.id)
---                          , onMouseUp (UpMsg <| fcShape.id)
---                         , x (toString (fcShape.x + model.graphicsSettings.outerPadding))
---                         , y (toString (fcShape.y + model.graphicsSettings.outerPadding))
---                         , width <| toString innerShapeWidth
---                         , height <| toString innerShapeHeight
---                         , fill innerColor ] [],
---                    text' [ onMouseDown (DownMsg <| fcShape.id)
---                          , onMouseUp (UpMsg <| fcShape.id)
---                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
---                          , fontFamily model.graphicsSettings.fontFamily
---                          ,  fontSize (toString model.graphicsSettings.fontSize)
---                          ,  Svg.Attributes.cursor "default"
---                          , x (toString (fcShape.x + model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding))
---                          , y (toString (fcShape.y+model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding + textHeight / 2 + model.graphicsSettings.fontSize / 3))
---                          , fill textColor ] [Svg.text fcShape.title]]
---        End ->
---            let (textWidth, textHeight) = getTextDimension fcShape.title model.graphicsSettings.fontFamily model.graphicsSettings.fontSize
---                innerShapeWidth = textWidth + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
---                innerShapeHeight = textHeight + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
---                outerShapeWidth = innerShapeWidth + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
---                outerShapeHeight = innerShapeHeight + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
---            in
---                g [ pointerEvents "all"] [
---                         
---                    rect [ onMouseDown (DownMsg <| fcShape.id)
---                         , onMouseUp (UpMsg <| fcShape.id)
---                         , x (toString fcShape.x)
---                         , y (toString <| fcShape.y)
---                         , width <| toString outerShapeWidth
---                         , height <| toString outerShapeHeight
---                         ,  rx "30"
---                         , ry "30"
---                         , stroke strokeColor
---                         , strokeDasharray "10,10"
---                         , fill outerColor
---                         ] [],
---                    rect [ onMouseDown (DownMsg <| fcShape.id)
---                         , onMouseUp (UpMsg  fcShape.id)
---                         , x (toString (fcShape.x + model.graphicsSettings.outerPadding))
---                         , y (toString (fcShape.y + model.graphicsSettings.outerPadding))
---                         , width <| toString innerShapeWidth
---                         , height <| toString innerShapeHeight
---                         ,  rx "25"
---                         , ry "25"
---                         , fill innerColor ] [],
---                    text' [ onMouseDown (DownMsg  fcShape.id)
---                          , onMouseUp (UpMsg  fcShape.id)
---                          , pointerEvents "none"
---                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
---                          , fontFamily model.graphicsSettings.fontFamily
---                          ,  fontSize (toString model.graphicsSettings.fontSize)
---                          ,  Svg.Attributes.cursor "default"
---                          , x (toString (fcShape.x + model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding))
---                          , y (toString (fcShape.y+model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding + textHeight / 2 + model.graphicsSettings.fontSize/3))
---                          , fill textColor] [Svg.text fcShape.title]]
---        Condition ->
---            let (textWidth, textHeight) = getTextDimension fcShape.title model.graphicsSettings.fontFamily model.graphicsSettings.fontSize
---                innerShapeWidth = textWidth + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
---                innerShapeHeight = textHeight + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
---                outerShapeWidth = innerShapeWidth + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
---                outerShapeHeight = innerShapeHeight + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
---                innerStartX = fcShape.x + model.graphicsSettings.outerPadding -- - smallAmount
---                innerStartY = fcShape.y + model.graphicsSettings.outerPadding
---            in
---                g [pointerEvents "all"
---                         , onMouseUp (UpMsg  fcShape.id)][
---                    polygon[ onMouseDown (DownMsg  fcShape.id)
---                         , points ((toString <| fcShape.x) ++ "," ++ (toString <| fcShape.y + outerShapeHeight/2) ++ " "
---                                ++ (toString (fcShape.x + outerShapeWidth/2)) ++ "," ++ (toString fcShape.y) ++ " "
---                                ++ (toString (fcShape.x + outerShapeWidth)) ++ "," ++ (toString (fcShape.y + outerShapeHeight/2)) ++ " "
---                                ++ (toString <| fcShape.x + outerShapeWidth / 2) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " ")
---
---                         , stroke strokeColor
---                         , strokeDasharray "10,10"
---                         , fill outerColor ] [],
---                    polygon [ onMouseDown (DownMsg  fcShape.id)
---                         , points ((toString <| innerStartX) ++ "," ++ (toString <| innerStartY + innerShapeHeight/2) ++ " "
---                                ++ (toString (innerStartX + innerShapeWidth/2)) ++ "," ++ (toString <| innerStartY) ++ " "
---                                ++ (toString (innerStartX + innerShapeWidth)) ++ "," ++ (toString (innerStartY + innerShapeHeight/2)) ++ " "
---                                ++ (toString <| innerStartX + innerShapeWidth / 2) ++ "," ++ (toString (innerStartY + innerShapeHeight)) ++ " ")
---
---                         , fill innerColor] [],
---                    text' [ onMouseDown (DownMsg {areaType=Inner, id=FcShapeId fcShape.id})
---                          , fontFamily model.graphicsSettings.fontFamily
---                          , fontSize (toString model.graphicsSettings.fontSize)
---                          ,  Svg.Attributes.cursor "default"
---                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
---                          , x (toString (fcShape.x + model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding))
---                          , y (toString (fcShape.y+model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding + textHeight / 2 + model.graphicsSettings.fontSize / 3))
---                          , fill textColor] [Svg.text fcShape.title]]
+        Action ->
+            let (textWidth, textHeight) = getTextDimension fcShape.title model.graphicsSettings.fontFamily model.graphicsSettings.fontSize
+                innerShapeWidth = textWidth + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
+                innerShapeHeight = textHeight + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
+                outerShapeWidth = innerShapeWidth + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
+                outerShapeHeight = innerShapeHeight + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
+            in
+                g [ pointerEvents "all"] [
+                    rect [ Html.Events.onWithOptions
+                               "mousedown"
+                               { stopPropagation=False
+                               , preventDefault=True
+                               }
+                               (Json.succeed (DownMsg <| Outer fcShape.id))
+                          , Html.Events.onWithOptions
+                               "mouseup"
+                               { stopPropagation=False
+                               , preventDefault=True
+                               }
+                               (Json.succeed (UpMsg <| Outer fcShape.id))
+                         , x (toString fcShape.x)
+                         , y (toString <| fcShape.y)
+                         , width <| toString outerShapeWidth
+                         , height <| toString outerShapeHeight
+                         , stroke strokeColor
+                         , strokeDasharray myStrokeDashArray
+                         , fill outerColor] [],
+                    rect [ Html.Events.onWithOptions
+                               "mousedown"
+                               { stopPropagation=False
+                               , preventDefault=True
+                               }
+                               (Json.succeed (DownMsg <| Inner fcShape.id))
+                          , Html.Events.onWithOptions
+                               "mouseup"
+                               { stopPropagation=False
+                               , preventDefault=True
+                               }
+                               (Json.succeed (UpMsg <| Inner fcShape.id))
+                         , x (toString (fcShape.x + model.graphicsSettings.outerPadding))
+                         , y (toString (fcShape.y + model.graphicsSettings.outerPadding))
+                         , width <| toString innerShapeWidth
+                         , height <| toString innerShapeHeight
+                         , fill innerColor ] [],
+                    text' [ Html.Events.onWithOptions
+                               "mousedown"
+                               { stopPropagation=False
+                               , preventDefault=True
+                               }
+                               (Json.succeed (DownMsg <| Inner fcShape.id))
+                          , Html.Events.onWithOptions
+                               "mouseup"
+                               { stopPropagation=False
+                               , preventDefault=True
+                               }
+                               (Json.succeed (UpMsg <| Inner fcShape.id))
+                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+                          , fontFamily model.graphicsSettings.fontFamily
+                          ,  fontSize (toString model.graphicsSettings.fontSize)
+                          ,  Svg.Attributes.cursor "default"
+                          , x (toString (fcShape.x + model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding))
+                          , y (toString (fcShape.y+model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding + textHeight / 2 + model.graphicsSettings.fontSize / 3))
+                          , fill textColor ] [Svg.text fcShape.title]]
+        End ->
+            let (textWidth, textHeight) = getTextDimension fcShape.title model.graphicsSettings.fontFamily model.graphicsSettings.fontSize
+                innerShapeWidth = textWidth + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
+                innerShapeHeight = textHeight + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
+                outerShapeWidth = innerShapeWidth + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
+                outerShapeHeight = innerShapeHeight + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
+            in
+                g [ pointerEvents "all"] [
+                         
+                    rect [ Html.Events.onWithOptions
+                               "mousedown"
+                               { stopPropagation=False
+                               , preventDefault=True
+                               }
+                               (Json.succeed (DownMsg <| Outer fcShape.id))
+                          , Html.Events.onWithOptions
+                               "mouseup"
+                               { stopPropagation=False
+                               , preventDefault=True
+                               }
+                               (Json.succeed (UpMsg <| Outer fcShape.id))
+                         , x (toString fcShape.x)
+                         , y (toString <| fcShape.y)
+                         , width <| toString outerShapeWidth
+                         , height <| toString outerShapeHeight
+                         ,  rx "30"
+                         , ry "30"
+                         , stroke strokeColor
+                         , strokeDasharray myStrokeDashArray
+                         , fill outerColor
+                         ] [],
+                    rect [ Html.Events.onWithOptions
+                               "mousedown"
+                               { stopPropagation=False
+                               , preventDefault=True
+                               }
+                               (Json.succeed (DownMsg <| Inner fcShape.id))
+                          , Html.Events.onWithOptions
+                               "mouseup"
+                               { stopPropagation=False
+                               , preventDefault=True
+                               }
+                               (Json.succeed (UpMsg <| Inner fcShape.id))
+                         , x (toString (fcShape.x + model.graphicsSettings.outerPadding))
+                         , y (toString (fcShape.y + model.graphicsSettings.outerPadding))
+                         , width <| toString innerShapeWidth
+                         , height <| toString innerShapeHeight
+                         ,  rx "25"
+                         , ry "25"
+                         , fill innerColor ] [],
+                    text' [ Html.Events.onWithOptions
+                               "mousedown"
+                               { stopPropagation=False
+                               , preventDefault=True
+                               }
+                               (Json.succeed (DownMsg <| Inner fcShape.id))
+                          , Html.Events.onWithOptions
+                               "mouseup"
+                               { stopPropagation=False
+                               , preventDefault=True
+                               }
+                               (Json.succeed (UpMsg <| Inner fcShape.id))
+                          , pointerEvents "none"
+                          , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+                          , fontFamily model.graphicsSettings.fontFamily
+                          ,  fontSize (toString model.graphicsSettings.fontSize)
+                          ,  Svg.Attributes.cursor "default"
+                          , x (toString (fcShape.x + model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding))
+                          , y (toString (fcShape.y+model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding + textHeight / 2 + model.graphicsSettings.fontSize/3))
+                          , fill textColor] [Svg.text fcShape.title]]
+        Condition ->
+            let (textWidth, textHeight) = getTextDimension fcShape.title model.graphicsSettings.fontFamily model.graphicsSettings.fontSize
+                innerShapeWidth = textWidth + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
+                innerShapeHeight = textHeight + model.graphicsSettings.innerPadding + model.graphicsSettings.innerPadding
+                outerShapeWidth = innerShapeWidth + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
+                outerShapeHeight = innerShapeHeight + model.graphicsSettings.outerPadding + model.graphicsSettings.outerPadding
+                innerStartX = fcShape.x + model.graphicsSettings.outerPadding -- - smallAmount
+                innerStartY = fcShape.y + model.graphicsSettings.outerPadding
+            in
+                g [ pointerEvents "all"
+                  , onMouseUp (UpMsg <| Outer fcShape.id)
+                  ]
+                  [ polygon
+                      [ Html.Events.onWithOptions
+                            "mousedown"
+                            { stopPropagation=False
+                            , preventDefault=True
+                            }
+                            (Json.succeed (DownMsg <| Outer fcShape.id))
+                      , points ((toString <| fcShape.x) ++ "," ++ (toString <| fcShape.y + outerShapeHeight/2) ++ " "
+                                ++ (toString (fcShape.x + outerShapeWidth/2)) ++ "," ++ (toString fcShape.y) ++ " "
+                                ++ (toString (fcShape.x + outerShapeWidth)) ++ "," ++ (toString (fcShape.y + outerShapeHeight/2)) ++ " "
+                                ++ (toString <| fcShape.x + outerShapeWidth / 2) ++ "," ++ (toString (fcShape.y + outerShapeHeight)) ++ " ")
+
+                      , stroke strokeColor
+                      , strokeDasharray myStrokeDashArray
+                      , fill outerColor
+                      ]
+                      []
+                  , polygon
+                      [ Html.Events.onWithOptions
+                            "mousedown"
+                            { stopPropagation=False
+                            , preventDefault=True
+                            }
+                            (Json.succeed (DownMsg <| Inner fcShape.id))
+                      , points ((toString <| innerStartX) ++ "," ++ (toString <| innerStartY + innerShapeHeight/2) ++ " "
+                                ++ (toString (innerStartX + innerShapeWidth/2)) ++ "," ++ (toString <| innerStartY) ++ " "
+                                ++ (toString (innerStartX + innerShapeWidth)) ++ "," ++ (toString (innerStartY + innerShapeHeight/2)) ++ " "
+                                ++ (toString <| innerStartX + innerShapeWidth / 2) ++ "," ++ (toString (innerStartY + innerShapeHeight)) ++ " ")
+
+                       , fill innerColor
+                      ]
+                      []
+                  , text'
+                      [ Html.Events.onWithOptions
+                            "mousedown"
+                            { stopPropagation=False
+                            , preventDefault=True
+                            }
+                            (Json.succeed (DownMsg <| Inner fcShape.id))
+                      , fontFamily model.graphicsSettings.fontFamily
+                      , fontSize (toString model.graphicsSettings.fontSize)
+                      ,  Svg.Attributes.cursor "default"
+                      , Svg.Attributes.style "user-select: none; -webkit-user-select: none; -moz-user-select: none;"
+                      , x (toString (fcShape.x + model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding))
+                      , y (toString (fcShape.y+model.graphicsSettings.outerPadding + model.graphicsSettings.innerPadding + textHeight / 2 + model.graphicsSettings.fontSize / 3))
+                      , fill textColor
+                      ]
+                      [Svg.text fcShape.title]
+                  ]
 
 
 getTextDimension : String -> String -> Float -> (Float,Float)

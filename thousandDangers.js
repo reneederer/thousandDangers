@@ -9914,6 +9914,9 @@ var _user$project$FcTypes$Model = F9(
 	function (a, b, c, d, e, f, g, h, i) {
 		return {fcShapes: a, fcArrows: b, dragElement: c, dragOffsetX: d, dragOffsetY: e, selectedElementId: f, currentLine: g, mainDivOffset: h, graphicsSettings: i};
 	});
+var _user$project$FcTypes$Action = {ctor: 'Action'};
+var _user$project$FcTypes$Condition = {ctor: 'Condition'};
+var _user$project$FcTypes$End = {ctor: 'End'};
 var _user$project$FcTypes$Start = {ctor: 'Start'};
 var _user$project$FcTypes$ArrowElement = function (a) {
 	return {ctor: 'ArrowElement', _0: a};
@@ -10334,10 +10337,17 @@ var _user$project$FcDatabase$saveElements = function (model) {
 };
 var _user$project$FcDatabase$readShapeType = function (s) {
 	var _p5 = s;
-	if (_p5 === 'Start') {
-		return _user$project$FcTypes$Start;
-	} else {
-		return _user$project$FcTypes$Start;
+	switch (_p5) {
+		case 'Start':
+			return _user$project$FcTypes$Start;
+		case 'End':
+			return _user$project$FcTypes$End;
+		case 'Action':
+			return _user$project$FcTypes$Action;
+		case 'Condition':
+			return _user$project$FcTypes$Condition;
+		default:
+			return _user$project$FcTypes$End;
 	}
 };
 var _user$project$FcDatabase$decodeElements = function () {
@@ -11167,6 +11177,10 @@ var _user$project$FcGraphics$getTextDimension = F3(
 	});
 var _user$project$FcGraphics$fcShapeToSvg = F2(
 	function (model, fcShape) {
+		var myStrokeDashArray = _elm_lang$core$Native_Utils.eq(
+			model.selectedElementId,
+			_elm_lang$core$Maybe$Just(
+				_user$project$FcTypes$FcShapeId(fcShape.id))) ? '10, 10' : '0, 0';
 		var textColor = 'red';
 		var innerColor = 'yellow';
 		var outerColor = '#FFF9CE';
@@ -11175,170 +11189,576 @@ var _user$project$FcGraphics$fcShapeToSvg = F2(
 			_elm_lang$core$Maybe$Just(
 				_user$project$FcTypes$FcShapeId(fcShape.id))) ? 'red' : outerColor;
 		var _p1 = fcShape.shapeType;
-		var _p2 = A3(_user$project$FcGraphics$getTextDimension, fcShape.title, model.graphicsSettings.fontFamily, model.graphicsSettings.fontSize);
-		var textWidth = _p2._0;
-		var textHeight = _p2._1;
-		var innerShapeWidth = (textWidth + model.graphicsSettings.innerPadding) + model.graphicsSettings.innerPadding;
-		var outerShapeWidth = (innerShapeWidth + model.graphicsSettings.outerPadding) + model.graphicsSettings.outerPadding;
-		var innerShapeHeight = (textHeight + model.graphicsSettings.innerPadding) + model.graphicsSettings.innerPadding;
-		var outerShapeHeight = (innerShapeHeight + model.graphicsSettings.outerPadding) + model.graphicsSettings.outerPadding;
-		return A2(
-			_elm_lang$svg$Svg$g,
-			_elm_lang$core$Native_List.fromArray(
-				[
-					_elm_lang$svg$Svg_Attributes$pointerEvents('all')
-				]),
-			_elm_lang$core$Native_List.fromArray(
-				[
-					A2(
-					_elm_lang$svg$Svg$rect,
+		switch (_p1.ctor) {
+			case 'Start':
+				var _p2 = A3(_user$project$FcGraphics$getTextDimension, fcShape.title, model.graphicsSettings.fontFamily, model.graphicsSettings.fontSize);
+				var textWidth = _p2._0;
+				var textHeight = _p2._1;
+				var innerShapeWidth = (textWidth + model.graphicsSettings.innerPadding) + model.graphicsSettings.innerPadding;
+				var outerShapeWidth = (innerShapeWidth + model.graphicsSettings.outerPadding) + model.graphicsSettings.outerPadding;
+				var innerShapeHeight = (textHeight + model.graphicsSettings.innerPadding) + model.graphicsSettings.innerPadding;
+				var outerShapeHeight = (innerShapeHeight + model.graphicsSettings.outerPadding) + model.graphicsSettings.outerPadding;
+				return A2(
+					_elm_lang$svg$Svg$g,
 					_elm_lang$core$Native_List.fromArray(
 						[
-							A3(
-							_elm_lang$html$Html_Events$onWithOptions,
-							'mousedown',
-							{stopPropagation: false, preventDefault: true},
-							_elm_lang$core$Json_Decode$succeed(
-								_user$project$FcTypes$DownMsg(
-									_user$project$FcTypes$Outer(fcShape.id)))),
-							A3(
-							_elm_lang$html$Html_Events$onWithOptions,
-							'mouseup',
-							{stopPropagation: false, preventDefault: true},
-							_elm_lang$core$Json_Decode$succeed(
-								_user$project$FcTypes$UpMsg(
-									_user$project$FcTypes$Outer(fcShape.id)))),
-							_elm_lang$svg$Svg_Attributes$x(
-							_elm_lang$core$Basics$toString(fcShape.x)),
-							_elm_lang$svg$Svg_Attributes$y(
-							_elm_lang$core$Basics$toString(fcShape.y)),
-							_elm_lang$svg$Svg_Attributes$width(
-							_elm_lang$core$Basics$toString(outerShapeWidth)),
-							_elm_lang$svg$Svg_Attributes$height(
-							_elm_lang$core$Basics$toString(outerShapeHeight)),
-							_elm_lang$svg$Svg_Attributes$rx('30'),
-							_elm_lang$svg$Svg_Attributes$ry('30'),
-							_elm_lang$svg$Svg_Attributes$stroke(strokeColor),
-							_elm_lang$svg$Svg_Attributes$strokeDasharray('10,10'),
-							_elm_lang$svg$Svg_Attributes$fill(outerColor)
-						]),
-					_elm_lang$core$Native_List.fromArray(
-						[])),
-					A2(
-					_elm_lang$svg$Svg$rect,
-					_elm_lang$core$Native_List.fromArray(
-						[
-							A3(
-							_elm_lang$html$Html_Events$onWithOptions,
-							'mousedown',
-							{stopPropagation: false, preventDefault: true},
-							_elm_lang$core$Json_Decode$succeed(
-								_user$project$FcTypes$DownMsg(
-									_user$project$FcTypes$Inner(fcShape.id)))),
-							A3(
-							_elm_lang$html$Html_Events$onWithOptions,
-							'mouseup',
-							{stopPropagation: false, preventDefault: true},
-							_elm_lang$core$Json_Decode$succeed(
-								_user$project$FcTypes$UpMsg(
-									_user$project$FcTypes$Inner(fcShape.id)))),
-							_elm_lang$svg$Svg_Attributes$x(
-							_elm_lang$core$Basics$toString(fcShape.x + model.graphicsSettings.outerPadding)),
-							_elm_lang$svg$Svg_Attributes$y(
-							_elm_lang$core$Basics$toString(fcShape.y + model.graphicsSettings.outerPadding)),
-							_elm_lang$svg$Svg_Attributes$width(
-							_elm_lang$core$Basics$toString(innerShapeWidth)),
-							_elm_lang$svg$Svg_Attributes$height(
-							_elm_lang$core$Basics$toString(innerShapeHeight)),
-							_elm_lang$svg$Svg_Attributes$rx('25'),
-							_elm_lang$svg$Svg_Attributes$ry('25'),
-							_elm_lang$svg$Svg_Attributes$fill(innerColor)
-						]),
-					_elm_lang$core$Native_List.fromArray(
-						[])),
-					A2(
-					_elm_lang$svg$Svg$text$,
-					_elm_lang$core$Native_List.fromArray(
-						[
-							_elm_lang$svg$Svg_Attributes$pointerEvents('none'),
-							_elm_lang$svg$Svg_Attributes$style('user-select: none; -webkit-user-select: none; -moz-user-select: none; ms-user-select: none; khtml-user-select: none;'),
-							_elm_lang$svg$Svg_Attributes$fontFamily(model.graphicsSettings.fontFamily),
-							_elm_lang$svg$Svg_Attributes$fontSize(
-							_elm_lang$core$Basics$toString(model.graphicsSettings.fontSize)),
-							_elm_lang$svg$Svg_Attributes$cursor('default'),
-							_elm_lang$svg$Svg_Attributes$x(
-							_elm_lang$core$Basics$toString((fcShape.x + model.graphicsSettings.outerPadding) + model.graphicsSettings.innerPadding)),
-							_elm_lang$svg$Svg_Attributes$y(
-							_elm_lang$core$Basics$toString((((fcShape.y + model.graphicsSettings.outerPadding) + model.graphicsSettings.innerPadding) + (textHeight / 2)) + (model.graphicsSettings.fontSize / 3))),
-							_elm_lang$svg$Svg_Attributes$fill(textColor)
+							_elm_lang$svg$Svg_Attributes$pointerEvents('all')
 						]),
 					_elm_lang$core$Native_List.fromArray(
 						[
-							_elm_lang$svg$Svg$text(fcShape.title)
-						]))
-				]));
+							A2(
+							_elm_lang$svg$Svg$rect,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mousedown',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$DownMsg(
+											_user$project$FcTypes$Outer(fcShape.id)))),
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mouseup',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$UpMsg(
+											_user$project$FcTypes$Outer(fcShape.id)))),
+									_elm_lang$svg$Svg_Attributes$x(
+									_elm_lang$core$Basics$toString(fcShape.x)),
+									_elm_lang$svg$Svg_Attributes$y(
+									_elm_lang$core$Basics$toString(fcShape.y)),
+									_elm_lang$svg$Svg_Attributes$width(
+									_elm_lang$core$Basics$toString(outerShapeWidth)),
+									_elm_lang$svg$Svg_Attributes$height(
+									_elm_lang$core$Basics$toString(outerShapeHeight)),
+									_elm_lang$svg$Svg_Attributes$rx('30'),
+									_elm_lang$svg$Svg_Attributes$ry('30'),
+									_elm_lang$svg$Svg_Attributes$stroke(strokeColor),
+									_elm_lang$svg$Svg_Attributes$strokeDasharray(myStrokeDashArray),
+									_elm_lang$svg$Svg_Attributes$fill(outerColor)
+								]),
+							_elm_lang$core$Native_List.fromArray(
+								[])),
+							A2(
+							_elm_lang$svg$Svg$rect,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mousedown',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$DownMsg(
+											_user$project$FcTypes$Inner(fcShape.id)))),
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mouseup',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$UpMsg(
+											_user$project$FcTypes$Inner(fcShape.id)))),
+									_elm_lang$svg$Svg_Attributes$x(
+									_elm_lang$core$Basics$toString(fcShape.x + model.graphicsSettings.outerPadding)),
+									_elm_lang$svg$Svg_Attributes$y(
+									_elm_lang$core$Basics$toString(fcShape.y + model.graphicsSettings.outerPadding)),
+									_elm_lang$svg$Svg_Attributes$width(
+									_elm_lang$core$Basics$toString(innerShapeWidth)),
+									_elm_lang$svg$Svg_Attributes$height(
+									_elm_lang$core$Basics$toString(innerShapeHeight)),
+									_elm_lang$svg$Svg_Attributes$rx('25'),
+									_elm_lang$svg$Svg_Attributes$ry('25'),
+									_elm_lang$svg$Svg_Attributes$fill(innerColor)
+								]),
+							_elm_lang$core$Native_List.fromArray(
+								[])),
+							A2(
+							_elm_lang$svg$Svg$text$,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									_elm_lang$svg$Svg_Attributes$pointerEvents('none'),
+									_elm_lang$svg$Svg_Attributes$style('user-select: none; -webkit-user-select: none; -moz-user-select: none; ms-user-select: none; khtml-user-select: none;'),
+									_elm_lang$svg$Svg_Attributes$fontFamily(model.graphicsSettings.fontFamily),
+									_elm_lang$svg$Svg_Attributes$fontSize(
+									_elm_lang$core$Basics$toString(model.graphicsSettings.fontSize)),
+									_elm_lang$svg$Svg_Attributes$cursor('default'),
+									_elm_lang$svg$Svg_Attributes$x(
+									_elm_lang$core$Basics$toString((fcShape.x + model.graphicsSettings.outerPadding) + model.graphicsSettings.innerPadding)),
+									_elm_lang$svg$Svg_Attributes$y(
+									_elm_lang$core$Basics$toString((((fcShape.y + model.graphicsSettings.outerPadding) + model.graphicsSettings.innerPadding) + (textHeight / 2)) + (model.graphicsSettings.fontSize / 3))),
+									_elm_lang$svg$Svg_Attributes$fill(textColor)
+								]),
+							_elm_lang$core$Native_List.fromArray(
+								[
+									_elm_lang$svg$Svg$text(fcShape.title)
+								]))
+						]));
+			case 'Action':
+				var _p3 = A3(_user$project$FcGraphics$getTextDimension, fcShape.title, model.graphicsSettings.fontFamily, model.graphicsSettings.fontSize);
+				var textWidth = _p3._0;
+				var textHeight = _p3._1;
+				var innerShapeWidth = (textWidth + model.graphicsSettings.innerPadding) + model.graphicsSettings.innerPadding;
+				var outerShapeWidth = (innerShapeWidth + model.graphicsSettings.outerPadding) + model.graphicsSettings.outerPadding;
+				var innerShapeHeight = (textHeight + model.graphicsSettings.innerPadding) + model.graphicsSettings.innerPadding;
+				var outerShapeHeight = (innerShapeHeight + model.graphicsSettings.outerPadding) + model.graphicsSettings.outerPadding;
+				return A2(
+					_elm_lang$svg$Svg$g,
+					_elm_lang$core$Native_List.fromArray(
+						[
+							_elm_lang$svg$Svg_Attributes$pointerEvents('all')
+						]),
+					_elm_lang$core$Native_List.fromArray(
+						[
+							A2(
+							_elm_lang$svg$Svg$rect,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mousedown',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$DownMsg(
+											_user$project$FcTypes$Outer(fcShape.id)))),
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mouseup',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$UpMsg(
+											_user$project$FcTypes$Outer(fcShape.id)))),
+									_elm_lang$svg$Svg_Attributes$x(
+									_elm_lang$core$Basics$toString(fcShape.x)),
+									_elm_lang$svg$Svg_Attributes$y(
+									_elm_lang$core$Basics$toString(fcShape.y)),
+									_elm_lang$svg$Svg_Attributes$width(
+									_elm_lang$core$Basics$toString(outerShapeWidth)),
+									_elm_lang$svg$Svg_Attributes$height(
+									_elm_lang$core$Basics$toString(outerShapeHeight)),
+									_elm_lang$svg$Svg_Attributes$stroke(strokeColor),
+									_elm_lang$svg$Svg_Attributes$strokeDasharray(myStrokeDashArray),
+									_elm_lang$svg$Svg_Attributes$fill(outerColor)
+								]),
+							_elm_lang$core$Native_List.fromArray(
+								[])),
+							A2(
+							_elm_lang$svg$Svg$rect,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mousedown',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$DownMsg(
+											_user$project$FcTypes$Inner(fcShape.id)))),
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mouseup',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$UpMsg(
+											_user$project$FcTypes$Inner(fcShape.id)))),
+									_elm_lang$svg$Svg_Attributes$x(
+									_elm_lang$core$Basics$toString(fcShape.x + model.graphicsSettings.outerPadding)),
+									_elm_lang$svg$Svg_Attributes$y(
+									_elm_lang$core$Basics$toString(fcShape.y + model.graphicsSettings.outerPadding)),
+									_elm_lang$svg$Svg_Attributes$width(
+									_elm_lang$core$Basics$toString(innerShapeWidth)),
+									_elm_lang$svg$Svg_Attributes$height(
+									_elm_lang$core$Basics$toString(innerShapeHeight)),
+									_elm_lang$svg$Svg_Attributes$fill(innerColor)
+								]),
+							_elm_lang$core$Native_List.fromArray(
+								[])),
+							A2(
+							_elm_lang$svg$Svg$text$,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mousedown',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$DownMsg(
+											_user$project$FcTypes$Inner(fcShape.id)))),
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mouseup',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$UpMsg(
+											_user$project$FcTypes$Inner(fcShape.id)))),
+									_elm_lang$svg$Svg_Attributes$style('user-select: none; -webkit-user-select: none; -moz-user-select: none;'),
+									_elm_lang$svg$Svg_Attributes$fontFamily(model.graphicsSettings.fontFamily),
+									_elm_lang$svg$Svg_Attributes$fontSize(
+									_elm_lang$core$Basics$toString(model.graphicsSettings.fontSize)),
+									_elm_lang$svg$Svg_Attributes$cursor('default'),
+									_elm_lang$svg$Svg_Attributes$x(
+									_elm_lang$core$Basics$toString((fcShape.x + model.graphicsSettings.outerPadding) + model.graphicsSettings.innerPadding)),
+									_elm_lang$svg$Svg_Attributes$y(
+									_elm_lang$core$Basics$toString((((fcShape.y + model.graphicsSettings.outerPadding) + model.graphicsSettings.innerPadding) + (textHeight / 2)) + (model.graphicsSettings.fontSize / 3))),
+									_elm_lang$svg$Svg_Attributes$fill(textColor)
+								]),
+							_elm_lang$core$Native_List.fromArray(
+								[
+									_elm_lang$svg$Svg$text(fcShape.title)
+								]))
+						]));
+			case 'End':
+				var _p4 = A3(_user$project$FcGraphics$getTextDimension, fcShape.title, model.graphicsSettings.fontFamily, model.graphicsSettings.fontSize);
+				var textWidth = _p4._0;
+				var textHeight = _p4._1;
+				var innerShapeWidth = (textWidth + model.graphicsSettings.innerPadding) + model.graphicsSettings.innerPadding;
+				var outerShapeWidth = (innerShapeWidth + model.graphicsSettings.outerPadding) + model.graphicsSettings.outerPadding;
+				var innerShapeHeight = (textHeight + model.graphicsSettings.innerPadding) + model.graphicsSettings.innerPadding;
+				var outerShapeHeight = (innerShapeHeight + model.graphicsSettings.outerPadding) + model.graphicsSettings.outerPadding;
+				return A2(
+					_elm_lang$svg$Svg$g,
+					_elm_lang$core$Native_List.fromArray(
+						[
+							_elm_lang$svg$Svg_Attributes$pointerEvents('all')
+						]),
+					_elm_lang$core$Native_List.fromArray(
+						[
+							A2(
+							_elm_lang$svg$Svg$rect,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mousedown',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$DownMsg(
+											_user$project$FcTypes$Outer(fcShape.id)))),
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mouseup',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$UpMsg(
+											_user$project$FcTypes$Outer(fcShape.id)))),
+									_elm_lang$svg$Svg_Attributes$x(
+									_elm_lang$core$Basics$toString(fcShape.x)),
+									_elm_lang$svg$Svg_Attributes$y(
+									_elm_lang$core$Basics$toString(fcShape.y)),
+									_elm_lang$svg$Svg_Attributes$width(
+									_elm_lang$core$Basics$toString(outerShapeWidth)),
+									_elm_lang$svg$Svg_Attributes$height(
+									_elm_lang$core$Basics$toString(outerShapeHeight)),
+									_elm_lang$svg$Svg_Attributes$rx('30'),
+									_elm_lang$svg$Svg_Attributes$ry('30'),
+									_elm_lang$svg$Svg_Attributes$stroke(strokeColor),
+									_elm_lang$svg$Svg_Attributes$strokeDasharray(myStrokeDashArray),
+									_elm_lang$svg$Svg_Attributes$fill(outerColor)
+								]),
+							_elm_lang$core$Native_List.fromArray(
+								[])),
+							A2(
+							_elm_lang$svg$Svg$rect,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mousedown',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$DownMsg(
+											_user$project$FcTypes$Inner(fcShape.id)))),
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mouseup',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$UpMsg(
+											_user$project$FcTypes$Inner(fcShape.id)))),
+									_elm_lang$svg$Svg_Attributes$x(
+									_elm_lang$core$Basics$toString(fcShape.x + model.graphicsSettings.outerPadding)),
+									_elm_lang$svg$Svg_Attributes$y(
+									_elm_lang$core$Basics$toString(fcShape.y + model.graphicsSettings.outerPadding)),
+									_elm_lang$svg$Svg_Attributes$width(
+									_elm_lang$core$Basics$toString(innerShapeWidth)),
+									_elm_lang$svg$Svg_Attributes$height(
+									_elm_lang$core$Basics$toString(innerShapeHeight)),
+									_elm_lang$svg$Svg_Attributes$rx('25'),
+									_elm_lang$svg$Svg_Attributes$ry('25'),
+									_elm_lang$svg$Svg_Attributes$fill(innerColor)
+								]),
+							_elm_lang$core$Native_List.fromArray(
+								[])),
+							A2(
+							_elm_lang$svg$Svg$text$,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mousedown',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$DownMsg(
+											_user$project$FcTypes$Inner(fcShape.id)))),
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mouseup',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$UpMsg(
+											_user$project$FcTypes$Inner(fcShape.id)))),
+									_elm_lang$svg$Svg_Attributes$pointerEvents('none'),
+									_elm_lang$svg$Svg_Attributes$style('user-select: none; -webkit-user-select: none; -moz-user-select: none;'),
+									_elm_lang$svg$Svg_Attributes$fontFamily(model.graphicsSettings.fontFamily),
+									_elm_lang$svg$Svg_Attributes$fontSize(
+									_elm_lang$core$Basics$toString(model.graphicsSettings.fontSize)),
+									_elm_lang$svg$Svg_Attributes$cursor('default'),
+									_elm_lang$svg$Svg_Attributes$x(
+									_elm_lang$core$Basics$toString((fcShape.x + model.graphicsSettings.outerPadding) + model.graphicsSettings.innerPadding)),
+									_elm_lang$svg$Svg_Attributes$y(
+									_elm_lang$core$Basics$toString((((fcShape.y + model.graphicsSettings.outerPadding) + model.graphicsSettings.innerPadding) + (textHeight / 2)) + (model.graphicsSettings.fontSize / 3))),
+									_elm_lang$svg$Svg_Attributes$fill(textColor)
+								]),
+							_elm_lang$core$Native_List.fromArray(
+								[
+									_elm_lang$svg$Svg$text(fcShape.title)
+								]))
+						]));
+			default:
+				var innerStartY = fcShape.y + model.graphicsSettings.outerPadding;
+				var innerStartX = fcShape.x + model.graphicsSettings.outerPadding;
+				var _p5 = A3(_user$project$FcGraphics$getTextDimension, fcShape.title, model.graphicsSettings.fontFamily, model.graphicsSettings.fontSize);
+				var textWidth = _p5._0;
+				var textHeight = _p5._1;
+				var innerShapeWidth = (textWidth + model.graphicsSettings.innerPadding) + model.graphicsSettings.innerPadding;
+				var outerShapeWidth = (innerShapeWidth + model.graphicsSettings.outerPadding) + model.graphicsSettings.outerPadding;
+				var innerShapeHeight = (textHeight + model.graphicsSettings.innerPadding) + model.graphicsSettings.innerPadding;
+				var outerShapeHeight = (innerShapeHeight + model.graphicsSettings.outerPadding) + model.graphicsSettings.outerPadding;
+				return A2(
+					_elm_lang$svg$Svg$g,
+					_elm_lang$core$Native_List.fromArray(
+						[
+							_elm_lang$svg$Svg_Attributes$pointerEvents('all'),
+							_elm_lang$svg$Svg_Events$onMouseUp(
+							_user$project$FcTypes$UpMsg(
+								_user$project$FcTypes$Outer(fcShape.id)))
+						]),
+					_elm_lang$core$Native_List.fromArray(
+						[
+							A2(
+							_elm_lang$svg$Svg$polygon,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mousedown',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$DownMsg(
+											_user$project$FcTypes$Outer(fcShape.id)))),
+									_elm_lang$svg$Svg_Attributes$points(
+									A2(
+										_elm_lang$core$Basics_ops['++'],
+										_elm_lang$core$Basics$toString(fcShape.x),
+										A2(
+											_elm_lang$core$Basics_ops['++'],
+											',',
+											A2(
+												_elm_lang$core$Basics_ops['++'],
+												_elm_lang$core$Basics$toString(fcShape.y + (outerShapeHeight / 2)),
+												A2(
+													_elm_lang$core$Basics_ops['++'],
+													' ',
+													A2(
+														_elm_lang$core$Basics_ops['++'],
+														_elm_lang$core$Basics$toString(fcShape.x + (outerShapeWidth / 2)),
+														A2(
+															_elm_lang$core$Basics_ops['++'],
+															',',
+															A2(
+																_elm_lang$core$Basics_ops['++'],
+																_elm_lang$core$Basics$toString(fcShape.y),
+																A2(
+																	_elm_lang$core$Basics_ops['++'],
+																	' ',
+																	A2(
+																		_elm_lang$core$Basics_ops['++'],
+																		_elm_lang$core$Basics$toString(fcShape.x + outerShapeWidth),
+																		A2(
+																			_elm_lang$core$Basics_ops['++'],
+																			',',
+																			A2(
+																				_elm_lang$core$Basics_ops['++'],
+																				_elm_lang$core$Basics$toString(fcShape.y + (outerShapeHeight / 2)),
+																				A2(
+																					_elm_lang$core$Basics_ops['++'],
+																					' ',
+																					A2(
+																						_elm_lang$core$Basics_ops['++'],
+																						_elm_lang$core$Basics$toString(fcShape.x + (outerShapeWidth / 2)),
+																						A2(
+																							_elm_lang$core$Basics_ops['++'],
+																							',',
+																							A2(
+																								_elm_lang$core$Basics_ops['++'],
+																								_elm_lang$core$Basics$toString(fcShape.y + outerShapeHeight),
+																								' ')))))))))))))))),
+									_elm_lang$svg$Svg_Attributes$stroke(strokeColor),
+									_elm_lang$svg$Svg_Attributes$strokeDasharray(myStrokeDashArray),
+									_elm_lang$svg$Svg_Attributes$fill(outerColor)
+								]),
+							_elm_lang$core$Native_List.fromArray(
+								[])),
+							A2(
+							_elm_lang$svg$Svg$polygon,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mousedown',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$DownMsg(
+											_user$project$FcTypes$Inner(fcShape.id)))),
+									_elm_lang$svg$Svg_Attributes$points(
+									A2(
+										_elm_lang$core$Basics_ops['++'],
+										_elm_lang$core$Basics$toString(innerStartX),
+										A2(
+											_elm_lang$core$Basics_ops['++'],
+											',',
+											A2(
+												_elm_lang$core$Basics_ops['++'],
+												_elm_lang$core$Basics$toString(innerStartY + (innerShapeHeight / 2)),
+												A2(
+													_elm_lang$core$Basics_ops['++'],
+													' ',
+													A2(
+														_elm_lang$core$Basics_ops['++'],
+														_elm_lang$core$Basics$toString(innerStartX + (innerShapeWidth / 2)),
+														A2(
+															_elm_lang$core$Basics_ops['++'],
+															',',
+															A2(
+																_elm_lang$core$Basics_ops['++'],
+																_elm_lang$core$Basics$toString(innerStartY),
+																A2(
+																	_elm_lang$core$Basics_ops['++'],
+																	' ',
+																	A2(
+																		_elm_lang$core$Basics_ops['++'],
+																		_elm_lang$core$Basics$toString(innerStartX + innerShapeWidth),
+																		A2(
+																			_elm_lang$core$Basics_ops['++'],
+																			',',
+																			A2(
+																				_elm_lang$core$Basics_ops['++'],
+																				_elm_lang$core$Basics$toString(innerStartY + (innerShapeHeight / 2)),
+																				A2(
+																					_elm_lang$core$Basics_ops['++'],
+																					' ',
+																					A2(
+																						_elm_lang$core$Basics_ops['++'],
+																						_elm_lang$core$Basics$toString(innerStartX + (innerShapeWidth / 2)),
+																						A2(
+																							_elm_lang$core$Basics_ops['++'],
+																							',',
+																							A2(
+																								_elm_lang$core$Basics_ops['++'],
+																								_elm_lang$core$Basics$toString(innerStartY + innerShapeHeight),
+																								' ')))))))))))))))),
+									_elm_lang$svg$Svg_Attributes$fill(innerColor)
+								]),
+							_elm_lang$core$Native_List.fromArray(
+								[])),
+							A2(
+							_elm_lang$svg$Svg$text$,
+							_elm_lang$core$Native_List.fromArray(
+								[
+									A3(
+									_elm_lang$html$Html_Events$onWithOptions,
+									'mousedown',
+									{stopPropagation: false, preventDefault: true},
+									_elm_lang$core$Json_Decode$succeed(
+										_user$project$FcTypes$DownMsg(
+											_user$project$FcTypes$Inner(fcShape.id)))),
+									_elm_lang$svg$Svg_Attributes$fontFamily(model.graphicsSettings.fontFamily),
+									_elm_lang$svg$Svg_Attributes$fontSize(
+									_elm_lang$core$Basics$toString(model.graphicsSettings.fontSize)),
+									_elm_lang$svg$Svg_Attributes$cursor('default'),
+									_elm_lang$svg$Svg_Attributes$style('user-select: none; -webkit-user-select: none; -moz-user-select: none;'),
+									_elm_lang$svg$Svg_Attributes$x(
+									_elm_lang$core$Basics$toString((fcShape.x + model.graphicsSettings.outerPadding) + model.graphicsSettings.innerPadding)),
+									_elm_lang$svg$Svg_Attributes$y(
+									_elm_lang$core$Basics$toString((((fcShape.y + model.graphicsSettings.outerPadding) + model.graphicsSettings.innerPadding) + (textHeight / 2)) + (model.graphicsSettings.fontSize / 3))),
+									_elm_lang$svg$Svg_Attributes$fill(textColor)
+								]),
+							_elm_lang$core$Native_List.fromArray(
+								[
+									_elm_lang$svg$Svg$text(fcShape.title)
+								]))
+						]));
+		}
 	});
 var _user$project$FcGraphics$fcArrowToSvg = F2(
-	function (model, _p3) {
-		var _p4 = _p3;
-		var _p17 = _p4.title;
-		var _p16 = _p4.id;
+	function (model, _p6) {
+		var _p7 = _p6;
+		var _p20 = _p7.title;
+		var _p19 = _p7.id;
 		var myStrokeWidth = 1;
 		var distance = 50 / myStrokeWidth;
-		var _p5 = function () {
-			var _p6 = _p4.endPos;
-			if (_p6._0.ctor === 'Nothing') {
-				return {ctor: '_Tuple2', _0: _p6._1, _1: _p6._2};
+		var _p8 = function () {
+			var _p9 = _p7.endPos;
+			if (_p9._0.ctor === 'Nothing') {
+				return {ctor: '_Tuple2', _0: _p9._1, _1: _p9._2};
 			} else {
-				var el = A2(_user$project$FcElement$getShapeWithId, model, _p6._0._0);
-				var _p7 = el;
-				if (_p7.ctor === 'Nothing') {
+				var el = A2(_user$project$FcElement$getShapeWithId, model, _p9._0._0);
+				var _p10 = el;
+				if (_p10.ctor === 'Nothing') {
 					return {ctor: '_Tuple2', _0: 0, _1: 0};
 				} else {
-					var _p8 = _p7._0;
-					return {ctor: '_Tuple2', _0: _p6._1 + _p8.x, _1: _p6._2 + _p8.y};
+					var _p11 = _p10._0;
+					return {ctor: '_Tuple2', _0: _p9._1 + _p11.x, _1: _p9._2 + _p11.y};
 				}
 			}
 		}();
-		var endX1 = _p5._0;
-		var endY1 = _p5._1;
-		var _p9 = function () {
-			var _p10 = _p4.startPos;
-			if (_p10._0.ctor === 'Nothing') {
-				return {ctor: '_Tuple2', _0: _p10._1, _1: _p10._2};
+		var endX1 = _p8._0;
+		var endY1 = _p8._1;
+		var _p12 = function () {
+			var _p13 = _p7.startPos;
+			if (_p13._0.ctor === 'Nothing') {
+				return {ctor: '_Tuple2', _0: _p13._1, _1: _p13._2};
 			} else {
-				var el = A2(_user$project$FcElement$getShapeWithId, model, _p10._0._0);
-				var _p11 = el;
-				if (_p11.ctor === 'Nothing') {
+				var el = A2(_user$project$FcElement$getShapeWithId, model, _p13._0._0);
+				var _p14 = el;
+				if (_p14.ctor === 'Nothing') {
 					return {ctor: '_Tuple2', _0: 0, _1: 0};
 				} else {
-					var _p12 = _p11._0;
-					return {ctor: '_Tuple2', _0: _p10._1 + _p12.x, _1: _p10._2 + _p12.y};
+					var _p15 = _p14._0;
+					return {ctor: '_Tuple2', _0: _p13._1 + _p15.x, _1: _p13._2 + _p15.y};
 				}
 			}
 		}();
-		var startX1 = _p9._0;
-		var startY1 = _p9._1;
+		var startX1 = _p12._0;
+		var startY1 = _p12._1;
 		var l = A2(
 			_elm_lang$core$Basics$max,
 			1,
 			_elm_lang$core$Basics$sqrt(
 				Math.pow(endX1 - startX1, 2) + Math.pow(endY1 - startY1, 2))) / myStrokeWidth;
-		var _p13 = {ctor: '_Tuple2', _0: startX1 + ((endX1 - startX1) * (distance / l)), _1: startY1 + ((endY1 - startY1) * (distance / l))};
-		var sx1 = _p13._0;
-		var sy1 = _p13._1;
-		var _p14 = (_elm_lang$core$Native_Utils.cmp(l, 2 * distance) < 1) ? {ctor: '_Tuple2', _0: sx1, _1: sy1} : {ctor: '_Tuple2', _0: endX1 - ((endX1 - startX1) * (distance / l)), _1: endY1 - ((endY1 - startY1) * (distance / l))};
-		var ex1 = _p14._0;
-		var ey1 = _p14._1;
-		var _p15 = (_elm_lang$core$Native_Utils.cmp(endX1, startX1) > 0) ? {ctor: '_Tuple8', _0: startX1, _1: startY1, _2: endX1, _3: endY1, _4: sx1, _5: sy1, _6: ex1, _7: ey1} : {ctor: '_Tuple8', _0: startX1, _1: startY1, _2: endX1, _3: endY1, _4: sx1, _5: sy1, _6: ex1, _7: ey1};
-		var startX = _p15._0;
-		var startY = _p15._1;
-		var endX = _p15._2;
-		var endY = _p15._3;
-		var sx = _p15._4;
-		var sy = _p15._5;
-		var ex = _p15._6;
-		var ey = _p15._7;
+		var _p16 = {ctor: '_Tuple2', _0: startX1 + ((endX1 - startX1) * (distance / l)), _1: startY1 + ((endY1 - startY1) * (distance / l))};
+		var sx1 = _p16._0;
+		var sy1 = _p16._1;
+		var _p17 = (_elm_lang$core$Native_Utils.cmp(l, 2 * distance) < 1) ? {ctor: '_Tuple2', _0: sx1, _1: sy1} : {ctor: '_Tuple2', _0: endX1 - ((endX1 - startX1) * (distance / l)), _1: endY1 - ((endY1 - startY1) * (distance / l))};
+		var ex1 = _p17._0;
+		var ey1 = _p17._1;
+		var _p18 = (_elm_lang$core$Native_Utils.cmp(endX1, startX1) > 0) ? {ctor: '_Tuple8', _0: startX1, _1: startY1, _2: endX1, _3: endY1, _4: sx1, _5: sy1, _6: ex1, _7: ey1} : {ctor: '_Tuple8', _0: startX1, _1: startY1, _2: endX1, _3: endY1, _4: sx1, _5: sy1, _6: ex1, _7: ey1};
+		var startX = _p18._0;
+		var startY = _p18._1;
+		var endX = _p18._2;
+		var endY = _p18._3;
+		var sx = _p18._4;
+		var sy = _p18._5;
+		var ex = _p18._6;
+		var ey = _p18._7;
 		return A2(
 			_elm_lang$svg$Svg$svg,
 			_elm_lang$core$Native_List.fromArray(
@@ -11359,7 +11779,7 @@ var _user$project$FcGraphics$fcArrowToSvg = F2(
 									A2(
 										_elm_lang$core$Basics_ops['++'],
 										'arrowCaption',
-										_elm_lang$core$Basics$toString(_p16))),
+										_elm_lang$core$Basics$toString(_p19))),
 									_elm_lang$svg$Svg_Attributes$markerWidth('8500'),
 									_elm_lang$svg$Svg_Attributes$markerHeight('8500'),
 									_elm_lang$svg$Svg_Attributes$markerUnits('userSpaceOnUse'),
@@ -11368,7 +11788,7 @@ var _user$project$FcGraphics$fcArrowToSvg = F2(
 									_elm_lang$svg$Svg_Attributes$refX(
 									_elm_lang$core$Basics$toString(
 										_elm_lang$core$Basics$fst(
-											A3(_user$project$FcGraphics$getTextDimension, _p17, model.graphicsSettings.fontFamily, model.graphicsSettings.fontSize / 2)))),
+											A3(_user$project$FcGraphics$getTextDimension, _p20, model.graphicsSettings.fontFamily, model.graphicsSettings.fontSize / 2)))),
 									_elm_lang$svg$Svg_Attributes$refY('5'),
 									_elm_lang$svg$Svg_Attributes$orient('auto')
 								]),
@@ -11388,7 +11808,7 @@ var _user$project$FcGraphics$fcArrowToSvg = F2(
 										]),
 									_elm_lang$core$Native_List.fromArray(
 										[
-											_elm_lang$svg$Svg$text(_p17)
+											_elm_lang$svg$Svg$text(_p20)
 										]))
 								]))
 						])),
@@ -11515,7 +11935,7 @@ var _user$project$FcGraphics$fcArrowToSvg = F2(
 								'url(#arrowCaption',
 								A2(
 									_elm_lang$core$Basics_ops['++'],
-									_elm_lang$core$Basics$toString(_p16),
+									_elm_lang$core$Basics$toString(_p19),
 									')'))),
 							_elm_lang$svg$Svg_Attributes$style('stroke:rgb(255,0,0);stroke-width:2')
 						]),
@@ -11526,10 +11946,10 @@ var _user$project$FcGraphics$fcArrowToSvg = F2(
 					_elm_lang$core$Native_List.fromArray(
 						[
 							_elm_lang$svg$Svg_Attributes$pointerEvents(
-							_elm_lang$core$Native_Utils.eq(_p16, -1) ? 'none' : 'all'),
+							_elm_lang$core$Native_Utils.eq(_p19, -1) ? 'none' : 'all'),
 							_elm_lang$html$Html_Events$onDoubleClick(
 							_user$project$FcTypes$DownMsg(
-								_user$project$FcTypes$ArrowMiddle(_p16))),
+								_user$project$FcTypes$ArrowMiddle(_p19))),
 							_elm_lang$svg$Svg_Attributes$d(
 							A2(
 								_elm_lang$core$Basics_ops['++'],
@@ -11569,10 +11989,10 @@ var _user$project$FcGraphics$fcArrowToSvg = F2(
 					_elm_lang$core$Native_List.fromArray(
 						[
 							_elm_lang$svg$Svg_Attributes$pointerEvents(
-							_elm_lang$core$Native_Utils.eq(_p16, -1) ? 'none' : 'all'),
+							_elm_lang$core$Native_Utils.eq(_p19, -1) ? 'none' : 'all'),
 							_elm_lang$html$Html_Events$onDoubleClick(
 							_user$project$FcTypes$DownMsg(
-								_user$project$FcTypes$ArrowStart(_p16))),
+								_user$project$FcTypes$ArrowStart(_p19))),
 							_elm_lang$svg$Svg_Attributes$d(
 							A2(
 								_elm_lang$core$Basics_ops['++'],
@@ -11612,10 +12032,10 @@ var _user$project$FcGraphics$fcArrowToSvg = F2(
 					_elm_lang$core$Native_List.fromArray(
 						[
 							_elm_lang$svg$Svg_Attributes$pointerEvents(
-							_elm_lang$core$Native_Utils.eq(_p16, -1) ? 'none' : 'all'),
+							_elm_lang$core$Native_Utils.eq(_p19, -1) ? 'none' : 'all'),
 							_elm_lang$html$Html_Events$onDoubleClick(
 							_user$project$FcTypes$DownMsg(
-								_user$project$FcTypes$ArrowEnd(_p16))),
+								_user$project$FcTypes$ArrowEnd(_p19))),
 							_elm_lang$svg$Svg_Attributes$d(
 							A2(
 								_elm_lang$core$Basics_ops['++'],
@@ -11655,51 +12075,103 @@ var _user$project$FcGraphics$fcArrowToSvg = F2(
 var _user$project$FcGraphics$createHtml = F2(
 	function (model, id) {
 		var mshape = A2(_user$project$FcElement$getShapeWithId, model, id);
-		var _p18 = mshape;
-		if (_p18.ctor === 'Nothing') {
+		var _p21 = mshape;
+		if (_p21.ctor === 'Nothing') {
 			return _elm_lang$core$Native_List.fromArray(
 				[]);
 		} else {
-			var _p21 = _p18._0;
+			var _p25 = _p21._0;
 			var arrows = A2(_user$project$FcElement$arrowsWithStartShape, model, id);
 			var newIds = A2(
 				_elm_lang$core$List$filterMap,
 				function (x) {
-					var _p19 = x.endPos;
-					if ((_p19.ctor === '_Tuple3') && (_p19._0.ctor === 'Just')) {
-						return _elm_lang$core$Maybe$Just(_p19._0._0);
+					var _p22 = x.endPos;
+					if ((_p22.ctor === '_Tuple3') && (_p22._0.ctor === 'Just')) {
+						return _elm_lang$core$Maybe$Just(_p22._0._0);
 					} else {
 						return _elm_lang$core$Maybe$Nothing;
 					}
 				},
 				arrows);
-			var _p20 = _p21.shapeType;
-			return A2(
-				_elm_lang$core$List_ops['::'],
-				A2(
-					_elm_lang$html$Html$p,
-					_elm_lang$core$Native_List.fromArray(
-						[
-							_elm_lang$html$Html_Attributes$id(
-							_elm_lang$core$Basics$toString(id))
-						]),
-					_elm_lang$core$Native_List.fromArray(
-						[
-							_elm_lang$svg$Svg$text(_p21.text)
-						])),
-				A2(
-					_user$project$FcGraphics$createHtml,
-					model,
+			var _p23 = _p25.shapeType;
+			if (_p23.ctor === 'Condition') {
+				return A2(
+					_elm_lang$core$List_ops['::'],
 					A2(
-						_elm_lang$core$Maybe$withDefault,
-						-1,
-						_elm_lang$core$List$head(newIds))));
+						_elm_lang$html$Html$p,
+						_elm_lang$core$Native_List.fromArray(
+							[
+								_elm_lang$html$Html_Attributes$id(
+								_elm_lang$core$Basics$toString(id))
+							]),
+						_elm_lang$core$Native_List.fromArray(
+							[
+								_elm_lang$svg$Svg$text(_p25.text)
+							])),
+					A3(
+						_elm_lang$core$List$foldl,
+						F2(
+							function (el, state) {
+								var _p24 = el.endPos;
+								if ((_p24.ctor === '_Tuple3') && (_p24._0.ctor === 'Just')) {
+									return A2(
+										_elm_lang$core$List_ops['::'],
+										A2(
+											_elm_lang$html$Html$p,
+											_elm_lang$core$Native_List.fromArray(
+												[]),
+											_elm_lang$core$Native_List.fromArray(
+												[
+													A2(
+													_elm_lang$html$Html$a,
+													_elm_lang$core$Native_List.fromArray(
+														[
+															_elm_lang$html$Html_Attributes$href('#'),
+															_elm_lang$html$Html_Events$onClick(
+															_user$project$FcTypes$DownMsg(
+																_user$project$FcTypes$Inner(_p24._0._0)))
+														]),
+													_elm_lang$core$Native_List.fromArray(
+														[
+															_elm_lang$html$Html$text(el.title)
+														]))
+												])),
+										state);
+								} else {
+									return state;
+								}
+							}),
+						_elm_lang$core$Native_List.fromArray(
+							[]),
+						arrows));
+			} else {
+				return A2(
+					_elm_lang$core$List_ops['::'],
+					A2(
+						_elm_lang$html$Html$p,
+						_elm_lang$core$Native_List.fromArray(
+							[
+								_elm_lang$html$Html_Attributes$id(
+								_elm_lang$core$Basics$toString(id))
+							]),
+						_elm_lang$core$Native_List.fromArray(
+							[
+								_elm_lang$svg$Svg$text(_p25.text)
+							])),
+					A2(
+						_user$project$FcGraphics$createHtml,
+						model,
+						A2(
+							_elm_lang$core$Maybe$withDefault,
+							-1,
+							_elm_lang$core$List$head(newIds))));
+			}
 		}
 	});
 var _user$project$FcGraphics$view = function (model) {
 	var cur = function () {
-		var _p22 = model.currentLine;
-		if (_p22.ctor === 'Nothing') {
+		var _p26 = model.currentLine;
+		if (_p26.ctor === 'Nothing') {
 			return _elm_lang$core$Native_List.fromArray(
 				[]);
 		} else {
@@ -11708,7 +12180,7 @@ var _user$project$FcGraphics$view = function (model) {
 					A2(
 					_user$project$FcGraphics$fcArrowToSvg,
 					model,
-					{id: -1, startPos: _p22._0._0, endPos: _p22._0._1, title: 'no title'})
+					{id: -1, startPos: _p26._0._0, endPos: _p26._0._1, title: 'no title'})
 				]);
 		}
 	}();
@@ -11743,6 +12215,11 @@ var _user$project$FcGraphics$view = function (model) {
 						A2(
 						_elm_lang$html$Html_Events$on,
 						'scroll',
+						_elm_lang$core$Json_Decode$succeed(
+							_user$project$FcTypes$SetScrollPosition('mainEl'))),
+						A2(
+						_elm_lang$html$Html_Events$on,
+						'focus',
 						_elm_lang$core$Json_Decode$succeed(
 							_user$project$FcTypes$SetScrollPosition('mainEl'))),
 						_elm_lang$html$Html_Attributes$style(
@@ -11910,12 +12387,12 @@ var _user$project$FcGraphics$view = function (model) {
 															A2(
 																_elm_lang$core$Maybe$map,
 																function (x) {
-																	var _p23 = x;
-																	if (_p23.ctor === 'Just') {
-																		if (_p23._0.ctor === 'ShapeElement') {
-																			return _p23._0._0.title;
+																	var _p27 = x;
+																	if (_p27.ctor === 'Just') {
+																		if (_p27._0.ctor === 'ShapeElement') {
+																			return _p27._0._0.title;
 																		} else {
-																			return _p23._0._0.title;
+																			return _p27._0._0.title;
 																		}
 																	} else {
 																		return '';
@@ -11961,10 +12438,10 @@ var _user$project$FcGraphics$view = function (model) {
 															A2(
 																_elm_lang$core$Maybe$map,
 																function (x) {
-																	var _p24 = x;
-																	if (_p24.ctor === 'Just') {
-																		if (_p24._0.ctor === 'ShapeElement') {
-																			return _p24._0._0.text;
+																	var _p28 = x;
+																	if (_p28.ctor === 'Just') {
+																		if (_p28._0.ctor === 'ShapeElement') {
+																			return _p28._0._0.text;
 																		} else {
 																			return 'Pfeile haben keinen Text';
 																		}
@@ -11994,16 +12471,16 @@ var _user$project$FcGraphics$view = function (model) {
 									]))
 							]),
 						function (x) {
-							var _p25 = x;
-							if (_p25.ctor === 'Nothing') {
+							var _p29 = x;
+							if (_p29.ctor === 'Nothing') {
 								return _elm_lang$core$Native_List.fromArray(
 									[]);
 							} else {
-								if (_p25._0.ctor === 'FcArrowId') {
+								if (_p29._0.ctor === 'FcArrowId') {
 									return _elm_lang$core$Native_List.fromArray(
 										[]);
 								} else {
-									return A2(_user$project$FcGraphics$createHtml, model, _p25._0._0);
+									return A2(_user$project$FcGraphics$createHtml, model, _p29._0._0);
 								}
 							}
 						}(model.selectedElementId))
@@ -12045,8 +12522,8 @@ var _user$project$Main$init = {
 		fcShapes: _elm_lang$core$Native_List.fromArray(
 			[
 				{id: 1, shapeType: _user$project$FcTypes$Start, x: 40, y: 90, text: 'abc', title: '8'},
-				{id: 2, shapeType: _user$project$FcTypes$Start, x: 40, y: 490, text: 'def', title: 'treasdfasdf2'},
-				{id: 3, shapeType: _user$project$FcTypes$Start, x: 340, y: 290, text: 'Noch ein Element', title: 'Noch ein Element'}
+				{id: 2, shapeType: _user$project$FcTypes$Action, x: 40, y: 490, text: 'def', title: 'treasdfasdf2'},
+				{id: 3, shapeType: _user$project$FcTypes$Condition, x: 340, y: 290, text: 'Noch ein Element', title: 'Noch ein Element'}
 			]),
 		fcArrows: _elm_lang$core$Native_List.fromArray(
 			[
@@ -12090,7 +12567,7 @@ var _user$project$Main$init = {
 			_user$project$FcTypes$FcShapeId(1)),
 		currentLine: _elm_lang$core$Maybe$Nothing,
 		mainDivOffset: {x: 0.0, y: 0.0},
-		graphicsSettings: {fontSize: 28.0, fontFamily: 'Courier', innerPadding: 40.0, outerPadding: 40.0}
+		graphicsSettings: {fontSize: 38.0, fontFamily: 'Courier', innerPadding: 25.0, outerPadding: 25.0}
 	},
 	_1: _elm_lang$core$Platform_Cmd$none
 };
@@ -12280,7 +12757,7 @@ var _user$project$Main$update = F2(
 										_elm_lang$core$List_ops['::'],
 										{
 											id: _user$project$FcElement$findFreeId(model.fcShapes),
-											shapeType: _user$project$FcTypes$Start,
+											shapeType: _user$project$FcTypes$Action,
 											x: 0.0,
 											y: 0.0,
 											text: '',
@@ -12300,7 +12777,7 @@ var _user$project$Main$update = F2(
 										_elm_lang$core$List_ops['::'],
 										{
 											id: _user$project$FcElement$findFreeId(model.fcShapes),
-											shapeType: _user$project$FcTypes$Start,
+											shapeType: _user$project$FcTypes$Condition,
 											x: 0.0,
 											y: 0.0,
 											text: '',
@@ -12320,7 +12797,7 @@ var _user$project$Main$update = F2(
 										_elm_lang$core$List_ops['::'],
 										{
 											id: _user$project$FcElement$findFreeId(model.fcShapes),
-											shapeType: _user$project$FcTypes$Start,
+											shapeType: _user$project$FcTypes$End,
 											x: 0.0,
 											y: 0.0,
 											text: '',
@@ -12597,8 +13074,8 @@ var _user$project$Main$update = F2(
 									var _p35 = _p34._0;
 									return {
 										ctor: '_Tuple2',
-										_0: _elm_lang$core$Basics$toFloat(_p38.x) - _p35.x,
-										_1: _elm_lang$core$Basics$toFloat(_p38.y) - _p35.y
+										_0: (_elm_lang$core$Basics$toFloat(_p38.x) - _p35.x) + model.mainDivOffset.x,
+										_1: (_elm_lang$core$Basics$toFloat(_p38.y) - _p35.y) + model.mainDivOffset.y
 									};
 								}
 							}();

@@ -5,9 +5,9 @@ import Mouse
 
 type ShapeType = 
       Start
-    --| End
-    --| Condition
-    --| Action
+    | End
+    | Condition
+    | Action
 
 type alias Position = 
     { x : Float

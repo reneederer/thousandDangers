@@ -44,10 +44,25 @@ function get_user_id($name, $password)
     return -1;
 }
 
+function does_user_exist($name)
+{
+    global $conn;
+    $statement = $conn->prepare('
+        select id
+        from user
+        where name = :name
+        limit 1');
+    $statement->bindParam(':name', $name);
+    $result = $statement->execute();
+    $result = $statement->setFetchMode(PDO::FETCH_ASSOC); 
+    $rows = $statement->fetchAll();
+    return (count($rows) >= 1);
+}
+
 function create_user($name, $password, $email)
 {
     global $conn;
-    if(get_user_id($name, $password) !== -1)
+    if(does_user_exist($name))
     {
         return false;
     }

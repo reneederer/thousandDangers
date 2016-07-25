@@ -112,6 +112,9 @@
 ?>
 <html>
     <body>
+        <form action="" method="post">
+            <input type="submit" name="btnLogout" value="Ausloggen" />
+        </form>
         <h1>Tausend Gefahren</h1>
         <br />
         <h2>Buch auswählen</h2>
@@ -153,11 +156,10 @@
     {
 ?>
 <html style="background-color:green">
-<body style="background-color:yellow;margin:0px">
+<body style="background-color:yellow;margin:0px" onLoad="scrollPos('mainEl')";>
 <form action="" method="post">
     <input type="submit" name="btnLogout" value="Ausloggen" />
 </form>
-<a href=""
 <?php
     echo $_SESSION['book_name'];
     echo "<br><br>";
@@ -166,11 +168,14 @@
 <script src="thousandDangers.js"></script>
 <script>
     var node = document.getElementById('thousandDangers')
-    var app = Elm.Main.fullscreen();
-    app.ports.getScrollPosition.subscribe(function(id){
+    var app = Elm.Main.fullscreen()
+    var scrollPos = function(id)
+    {
         var el = document.getElementById(id)
-        return app.ports.scrollPositionTold.send({x : el.scrollLeft, y : el.scrollTop+el.top})
-    })
+        var boundingRect = el.getBoundingClientRect()
+        return app.ports.scrollPositionTold.send({x : el.scrollLeft-boundingRect.left, y : el.scrollTop-boundingRect.top})
+    }
+    app.ports.getScrollPosition.subscribe(scrollPos)
 </script>
 </body>
 </html>
