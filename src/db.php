@@ -180,23 +180,7 @@ function save_fc_arrows($fc_arrows)
         $result = $statement->execute();
     }
 }
-function getTeamName($user_id)
-{
-    global $conn;
-    $statement = $conn->prepare('
-        select name
-        from user
-        where id = :user_id');
-    $statement->bindParam(':user_id', $user_id);
-    $result = $statement->execute();
-    $result = $statement->setFetchMode(PDO::FETCH_ASSOC); 
-    $rows = $statement->fetchAll();
-    if(count($rows) === 0)
-    {
-        return false;
-    }
-    return $rows[0]['name'];
-}
+
 function getBooks($user_id)
 {
     global $conn;
@@ -230,8 +214,13 @@ function doesBookExist($user_id, $bookName)
     $rows = $statement->fetchAll();
     return count($rows) > 0;
 }
+
 function createNewBook($user_id, $bookName)
 {
+    if(doesBookExist($user_id, $bookName))
+    {
+        return false;
+    }
     global $conn;
     $statement = $conn->prepare('
         insert into book(user_id, name, creation_date) values(:user_id, :book_name, now())');
@@ -243,6 +232,7 @@ function createNewBook($user_id, $bookName)
     $statement->bindParam(':book_name', $bookName);
     $statement->bindParam(':user_id', $user_id);
     $statement->execute();
+    return true;
 }
 function createNewUser($user, $password)
 {

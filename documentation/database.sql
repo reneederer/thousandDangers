@@ -33,6 +33,7 @@ create table fc_arrow( id int
 insert into user(id, name, password, email) values(1, "rene", "1234", "reneederer@arcor.de");
 insert into user(id, name, password, email) values(2, "astrid", "123", "reneederer@web.de");
 insert into book(id, user_id, name, creation_date) values(1, 1, "1000 Gefahren", now());
+insert into book(id, user_id, name, creation_date) values(3, 1, "1002 Gefahren", now());
 insert into book(id, user_id, name, creation_date) values(2, 2, "1001 Dangers", now());
 insert into fc_shape_type(id, name) values(1, "Start"), (2, "End"), (3, "Action"), (4, "Condition");
 insert into fc_shape(id, book_id, fc_shape_type_id, x, y, title, text) values

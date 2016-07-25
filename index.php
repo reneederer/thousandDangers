@@ -1,6 +1,9 @@
 <?php
     include_once("src/db.php");
-    session_unset();
+    if(isset($_POST['btnLogout']))
+    {
+        session_unset();
+    }
     $errorMessageLogin = "";
     $errorMessageCreateAccount = "";
 
@@ -93,18 +96,55 @@
     }
     if(isset($_SESSION['user_id']))
     {
-        $_POST['bookName'] = '1000 Gefahren';
+        if(isset($_POST['btnCreateNewBook']))
+        {
+            if(createNewBook($_SESSION['user_id'], $_POST['txtNewBookName']))
+            {
+                $_SESSION['book_name'] = $_POST['txtNewBookName'];
+            }
+        }
         if(isset($_POST['bookName']))
         {
             $_SESSION['book_name'] = $_POST['bookName'];
         }
-        else if(!isset($_SESSION['book_name']))
+        if(!isset($_SESSION['book_name']))
         {
 ?>
 <html>
-<body>
-Buch ausw&auml;hlen!
-</body>
+    <body>
+        <h1>Tausend Gefahren</h1>
+        <br />
+        <h2>Buch auswählen</h2>
+        <br />
+        <form action="" method="post">
+            <table border="0">
+                <tr>
+                    <td>
+                        <select name="bookName" onchange="this.form.submit();">
+                            <option>Bitte Buch auswählen</option>
+<?php
+    $books = getBooks($_SESSION['user_id']);
+    foreach($books as $book)
+    {
+        echo '<option value="' . $book['name'] . '">' . $book['name'] . '</option>';
+    }
+?>
+                        </select>
+                    </td>
+                </tr>
+            </table>
+        </form>
+        <br />
+        <br />
+        <br />
+        <h2>Neues Buch anlegen</h2>
+        <br>
+        <form action="" method="post">
+            <input type="text" name="txtNewBookName" />
+            <input type="submit" name="btnCreateNewBook" value="Buch anlegen" />
+        </form>
+
+    </body>
 </html>
 <?php
         }
@@ -113,7 +153,11 @@ Buch ausw&auml;hlen!
     {
 ?>
 <html style="background-color:green">
-<body style="background-color:blue;margin:0px">
+<body style="background-color:yellow;margin:0px">
+<form action="" method="post">
+    <input type="submit" name="btnLogout" value="Ausloggen" />
+</form>
+<a href=""
 <?php
     echo $_SESSION['book_name'];
     echo "<br><br>";
