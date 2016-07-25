@@ -14,7 +14,7 @@ loadElements : Task Http.Error (List FcShape, List FcArrow)
 loadElements =
     Http.post
         decodeElements
-        "http://localhost/elm/thousandDangers/src/db.php"
+        "db.php"
         (Http.multipart
             [
                 Http.stringData "action" "load"
@@ -104,6 +104,6 @@ saveElements model =
             Http.defaultSettings
             { verb="POST"
             , headers = []
-            , url = "http://localhost/elm/thousandDangers/src/db.php"
+            , url = "db.php"
             , body = Http.multipart [ Http.stringData "action" "save" , Http.stringData "flowchart" json]
             }

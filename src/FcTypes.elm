@@ -63,6 +63,7 @@ type Msg =
     | SetScrollPosition String
     | ScrollPositionTold Position
     | CreateNewShape ShapeType
+    | SaveElements Int
 
 type alias GraphicsSettings = 
     { fontFamily : String

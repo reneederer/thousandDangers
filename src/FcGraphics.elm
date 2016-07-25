@@ -218,7 +218,7 @@ fcArrowToSvg model {id, startPos, endPos, title} =
                     []
                 , Svg.path
                     [ pointerEvents (if id == -1 then "none" else "all")
-                    , Html.Events.onDoubleClick (DownMsg <| ArrowMiddle id)
+                    , Html.Events.onClick (DownMsg <| ArrowMiddle id)
                     , d ( "M " ++ (toString sx) ++ ", " ++ (toString sy) ++
                           " L " ++ (toString (ex)) ++ ", " ++ (toString <|ey))
                     , Svg.Attributes.style ("stroke:rgb(0,255,0);stroke-width:" ++ (toString <| 14 * 2) ++ ";stroke-opacity:0.7001")] []

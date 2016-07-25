@@ -5,8 +5,8 @@
     ini_set('display_errors', 1);
     error_reporting(-1);
     $conn = new PDO('mysql:host=localhost;dbname=1998294_db', 'root', '1234');
+    //$conn = new PDO('mysql:host=localhost;dbname=1183032', '1183032', 'Steinmetzstr9');
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    //$conn = new PDO('mysql:host=fdb6.biz.nf;dbname=1998294_db', '1998294_db', 'Nuernberg12');
 
     if(isset($_POST['action']) && $_POST['action'] == 'load')
     {

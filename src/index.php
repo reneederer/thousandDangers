@@ -1,5 +1,5 @@
 <?php
-    include_once("src/db.php");
+    include_once("db.php");
     if(isset($_POST['btnLogout']))
     {
         session_unset();
@@ -156,7 +156,7 @@
     {
 ?>
 <html style="background-color:green">
-<body style="background-color:yellow;margin:0px" onLoad="scrollPos('mainEl')";>
+<body style="background-color:yellow;margin:0px" onLoad="scrollPos('mainEl')" onBeforeUnload="app.ports.unloadRequested.send(3)">
 <form action="" method="post">
     <input type="submit" name="btnLogout" value="Ausloggen" />
 </form>

@@ -14,9 +14,6 @@ import FcElement exposing (..)
 import FcGraphics exposing (..)
 import FcDatabase exposing (..)
 
-
-
-
 main =
     Html.App.program
     { init = init
@@ -29,28 +26,23 @@ main =
 
 init : (Model, Cmd Msg)
 init =
-    ({
-        fcShapes =
-            [ ({id=1, shapeType=Start, x=40,y=90,text="abc",title="8"})
-            , ({id=2, shapeType=Action, x=40,y=490,text="def",title="treasdfasdf2"})
-            , ({id=3, shapeType=Condition, x=340,y=290,text="Noch ein Element",title="Noch ein Element"})
-            ]
-        , fcArrows =
-            [ ({id=1, startPos= (Just 1, 10, 40), endPos=(Just 2, 50, 5), title="Start"})
-            , ({id=2, startPos=(Just 2, 10, 50), endPos=(Just 3, 80, 50), title="ijs2"})
-            ]
+    let x = loadElements |> perform (\a -> HttpFailure (toString a)) (\a -> HttpSuccess a)
+    in
+    {
+        fcShapes = []
+        , fcArrows = []
         , dragElement=Nothing
         , dragOffsetX=0
         , dragOffsetY=0
-        , selectedElementId= Just <| FcShapeId 1
+        , selectedElementId= Nothing
         , currentLine=Nothing
         , mainDivOffset={x=0.0, y=0.0}
-        , graphicsSettings = { fontSize = 38.0
+        , graphicsSettings = { fontSize = 18.0
                              , fontFamily = "Courier"
-                             , innerPadding = 25.0
-                             , outerPadding = 25.0
+                             , innerPadding = 10.0
+                             , outerPadding = 20.0
                              }
-    }, Cmd.none)
+    } ! [x]
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -63,6 +55,7 @@ update msg model =
                 Outer id ->
                     let _ = Debug.log "Outer" id in
                     {model | dragElement=Just <| Outer id, selectedElementId=Just <| FcShapeId id, currentLine=Just ((Just id, 0, 0), (Just id, 0, 0)) } ! []
+                ArrowMiddle id -> { model | selectedElementId = Just <| FcArrowId id } ! []
                 _ -> model ! []
         MouseDown lpos->
             let pos = localToGlobal {x=toFloat lpos.x, y=toFloat lpos.y} model.mainDivOffset 
@@ -116,7 +109,6 @@ update msg model =
                       } ! []
                 67 ->
                     let x = (saveElements model |> perform (\a -> HttpFailure (toString a)) (\a -> HttpFailure (toString a)))
-                        _ = Debug.log "x" x
                     in
                         model ! [x]
                 68 ->
@@ -139,7 +131,13 @@ update msg model =
             in
             model ! []
         TitleChanged s ->
-            let m = { model | fcShapes = List.map (\el -> if Just (FcShapeId el.id) == model.selectedElementId then {el | title = s} else el) model.fcShapes}
+            let m = { model | fcShapes =
+                                  model.fcShapes
+                                  |> List.map (\el -> if Just (FcShapeId el.id) == model.selectedElementId then {el | title = s} else el)
+                            , fcArrows =  
+                                  model.fcArrows
+                                  |> List.map (\ar -> if Just (FcArrowId ar.id) == model.selectedElementId then {ar | title = s} else ar)
+                    }
             in
                 m ! []
         TextChanged s ->
@@ -205,6 +203,10 @@ update msg model =
                                 m ! []
                         _ -> model ! []
         CreateNewShape shapeType -> model ! []
+        SaveElements _ ->
+            let x = (saveElements model |> perform (\a -> HttpFailure (toString a)) (\a -> HttpFailure (toString a)))
+            in
+                model ! [x]
 
 localToGlobal : Position -> Position -> Position
 localToGlobal pos offset = 
@@ -232,10 +234,13 @@ moveElementTo model movingElement x y =
 
 port scrollPositionTold : (Position -> msg) -> Sub msg
 port getScrollPosition : String -> Cmd msg
+port unloadRequested : (Int -> msg) -> Sub msg
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch [ scrollPositionTold ScrollPositionTold
+              , unloadRequested SaveElements
               , Mouse.moves MouseMove
               , Mouse.ups MouseUp
               , Mouse.downs MouseDown]

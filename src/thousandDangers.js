@@ -9945,6 +9945,9 @@ var _user$project$FcTypes$FcArrowId = function (a) {
 var _user$project$FcTypes$FcShapeId = function (a) {
 	return {ctor: 'FcShapeId', _0: a};
 };
+var _user$project$FcTypes$SaveElements = function (a) {
+	return {ctor: 'SaveElements', _0: a};
+};
 var _user$project$FcTypes$CreateNewShape = function (a) {
 	return {ctor: 'CreateNewShape', _0: a};
 };
@@ -10326,7 +10329,7 @@ var _user$project$FcDatabase$saveElements = function (model) {
 			verb: 'POST',
 			headers: _elm_lang$core$Native_List.fromArray(
 				[]),
-			url: 'http://localhost/elm/thousandDangers/src/db.php',
+			url: 'db.php',
 			body: _evancz$elm_http$Http$multipart(
 				_elm_lang$core$Native_List.fromArray(
 					[
@@ -10482,7 +10485,7 @@ var _user$project$FcDatabase$decodeElements = function () {
 var _user$project$FcDatabase$loadElements = A3(
 	_evancz$elm_http$Http$post,
 	_user$project$FcDatabase$decodeElements,
-	'http://localhost/elm/thousandDangers/src/db.php',
+	'db.php',
 	_evancz$elm_http$Http$multipart(
 		_elm_lang$core$Native_List.fromArray(
 			[
@@ -11947,7 +11950,7 @@ var _user$project$FcGraphics$fcArrowToSvg = F2(
 						[
 							_elm_lang$svg$Svg_Attributes$pointerEvents(
 							_elm_lang$core$Native_Utils.eq(_p19, -1) ? 'none' : 'all'),
-							_elm_lang$html$Html_Events$onDoubleClick(
+							_elm_lang$html$Html_Events$onClick(
 							_user$project$FcTypes$DownMsg(
 								_user$project$FcTypes$ArrowMiddle(_p19))),
 							_elm_lang$svg$Svg_Attributes$d(
@@ -12516,61 +12519,35 @@ var _user$project$Main$localToGlobal = F2(
 	function (pos, offset) {
 		return {x: pos.x + offset.x, y: pos.y + offset.y};
 	});
-var _user$project$Main$init = {
-	ctor: '_Tuple2',
-	_0: {
-		fcShapes: _elm_lang$core$Native_List.fromArray(
-			[
-				{id: 1, shapeType: _user$project$FcTypes$Start, x: 40, y: 90, text: 'abc', title: '8'},
-				{id: 2, shapeType: _user$project$FcTypes$Action, x: 40, y: 490, text: 'def', title: 'treasdfasdf2'},
-				{id: 3, shapeType: _user$project$FcTypes$Condition, x: 340, y: 290, text: 'Noch ein Element', title: 'Noch ein Element'}
-			]),
-		fcArrows: _elm_lang$core$Native_List.fromArray(
-			[
-				{
-				id: 1,
-				startPos: {
-					ctor: '_Tuple3',
-					_0: _elm_lang$core$Maybe$Just(1),
-					_1: 10,
-					_2: 40
-				},
-				endPos: {
-					ctor: '_Tuple3',
-					_0: _elm_lang$core$Maybe$Just(2),
-					_1: 50,
-					_2: 5
-				},
-				title: 'Start'
-			},
-				{
-				id: 2,
-				startPos: {
-					ctor: '_Tuple3',
-					_0: _elm_lang$core$Maybe$Just(2),
-					_1: 10,
-					_2: 50
-				},
-				endPos: {
-					ctor: '_Tuple3',
-					_0: _elm_lang$core$Maybe$Just(3),
-					_1: 80,
-					_2: 50
-				},
-				title: 'ijs2'
-			}
-			]),
-		dragElement: _elm_lang$core$Maybe$Nothing,
-		dragOffsetX: 0,
-		dragOffsetY: 0,
-		selectedElementId: _elm_lang$core$Maybe$Just(
-			_user$project$FcTypes$FcShapeId(1)),
-		currentLine: _elm_lang$core$Maybe$Nothing,
-		mainDivOffset: {x: 0.0, y: 0.0},
-		graphicsSettings: {fontSize: 38.0, fontFamily: 'Courier', innerPadding: 25.0, outerPadding: 25.0}
-	},
-	_1: _elm_lang$core$Platform_Cmd$none
-};
+var _user$project$Main$init = function () {
+	var x = A3(
+		_elm_lang$core$Task$perform,
+		function (a) {
+			return _user$project$FcTypes$HttpFailure(
+				_elm_lang$core$Basics$toString(a));
+		},
+		function (a) {
+			return _user$project$FcTypes$HttpSuccess(a);
+		},
+		_user$project$FcDatabase$loadElements);
+	return A2(
+		_elm_lang$core$Platform_Cmd_ops['!'],
+		{
+			fcShapes: _elm_lang$core$Native_List.fromArray(
+				[]),
+			fcArrows: _elm_lang$core$Native_List.fromArray(
+				[]),
+			dragElement: _elm_lang$core$Maybe$Nothing,
+			dragOffsetX: 0,
+			dragOffsetY: 0,
+			selectedElementId: _elm_lang$core$Maybe$Nothing,
+			currentLine: _elm_lang$core$Maybe$Nothing,
+			mainDivOffset: {x: 0.0, y: 0.0},
+			graphicsSettings: {fontSize: 18.0, fontFamily: 'Courier', innerPadding: 10.0, outerPadding: 20.0}
+		},
+		_elm_lang$core$Native_List.fromArray(
+			[x]));
+}();
 var _user$project$Main$scrollPositionTold = _elm_lang$core$Native_Platform.incomingPort(
 	'scrollPositionTold',
 	A2(
@@ -12585,16 +12562,6 @@ var _user$project$Main$scrollPositionTold = _elm_lang$core$Native_Platform.incom
 						{x: x, y: y});
 				});
 		}));
-var _user$project$Main$subscriptions = function (model) {
-	return _elm_lang$core$Platform_Sub$batch(
-		_elm_lang$core$Native_List.fromArray(
-			[
-				_user$project$Main$scrollPositionTold(_user$project$FcTypes$ScrollPositionTold),
-				_elm_lang$mouse$Mouse$moves(_user$project$FcTypes$MouseMove),
-				_elm_lang$mouse$Mouse$ups(_user$project$FcTypes$MouseUp),
-				_elm_lang$mouse$Mouse$downs(_user$project$FcTypes$MouseDown)
-			]));
-};
 var _user$project$Main$getScrollPosition = _elm_lang$core$Native_Platform.outgoingPort(
 	'getScrollPosition',
 	function (v) {
@@ -12651,6 +12618,17 @@ var _user$project$Main$update = F2(
 												_2: 0
 											}
 										})
+								}),
+							_elm_lang$core$Native_List.fromArray(
+								[]));
+					case 'ArrowMiddle':
+						return A2(
+							_elm_lang$core$Platform_Cmd_ops['!'],
+							_elm_lang$core$Native_Utils.update(
+								model,
+								{
+									selectedElementId: _elm_lang$core$Maybe$Just(
+										_user$project$FcTypes$FcArrowId(_p3._0))
 								}),
 							_elm_lang$core$Native_List.fromArray(
 								[]));
@@ -12855,14 +12833,13 @@ var _user$project$Main$update = F2(
 									_elm_lang$core$Basics$toString(a));
 							},
 							_user$project$FcDatabase$saveElements(model));
-						var _p19 = A2(_elm_lang$core$Debug$log, 'x', x);
 						return A2(
 							_elm_lang$core$Platform_Cmd_ops['!'],
 							model,
 							_elm_lang$core$Native_List.fromArray(
 								[x]));
 					case 68:
-						var _p20 = A2(_elm_lang$core$Debug$log, 'fcShapes', model.fcShapes);
+						var _p19 = A2(_elm_lang$core$Debug$log, 'fcShapes', model.fcShapes);
 						return A2(
 							_elm_lang$core$Platform_Cmd_ops['!'],
 							model,
@@ -12896,38 +12873,39 @@ var _user$project$Main$update = F2(
 							_user$project$Main$getScrollPosition(_p2._0)
 						]));
 			case 'ScrollPositionTold':
-				var _p21 = _p2._0;
+				var _p20 = _p2._0;
 				return A2(
 					_elm_lang$core$Platform_Cmd_ops['!'],
 					A2(
 						_elm_lang$core$Debug$log,
-						_elm_lang$core$Basics$toString(_p21.x),
+						_elm_lang$core$Basics$toString(_p20.x),
 						_elm_lang$core$Native_Utils.update(
 							model,
-							{mainDivOffset: _p21})),
+							{mainDivOffset: _p20})),
 					_elm_lang$core$Native_List.fromArray(
 						[]));
 			case 'HttpSuccess':
-				var _p23 = _p2._0;
-				var _p22 = A2(_elm_lang$core$Debug$log, 'success', _p23);
+				var _p22 = _p2._0;
+				var _p21 = A2(_elm_lang$core$Debug$log, 'success', _p22);
 				return A2(
 					_elm_lang$core$Platform_Cmd_ops['!'],
 					_elm_lang$core$Native_Utils.update(
 						model,
 						{
-							fcShapes: _elm_lang$core$Basics$fst(_p23),
-							fcArrows: _elm_lang$core$Basics$snd(_p23)
+							fcShapes: _elm_lang$core$Basics$fst(_p22),
+							fcArrows: _elm_lang$core$Basics$snd(_p22)
 						}),
 					_elm_lang$core$Native_List.fromArray(
 						[]));
 			case 'HttpFailure':
-				var _p24 = A2(_elm_lang$core$Debug$log, 'Failed to load', _p2._0);
+				var _p23 = A2(_elm_lang$core$Debug$log, 'Failed to load', _p2._0);
 				return A2(
 					_elm_lang$core$Platform_Cmd_ops['!'],
 					model,
 					_elm_lang$core$Native_List.fromArray(
 						[]));
 			case 'TitleChanged':
+				var _p24 = _p2._0;
 				var m = _elm_lang$core$Native_Utils.update(
 					model,
 					{
@@ -12939,9 +12917,20 @@ var _user$project$Main$update = F2(
 										_user$project$FcTypes$FcShapeId(el.id)),
 									model.selectedElementId) ? _elm_lang$core$Native_Utils.update(
 									el,
-									{title: _p2._0}) : el;
+									{title: _p24}) : el;
 							},
-							model.fcShapes)
+							model.fcShapes),
+						fcArrows: A2(
+							_elm_lang$core$List$map,
+							function (ar) {
+								return _elm_lang$core$Native_Utils.eq(
+									_elm_lang$core$Maybe$Just(
+										_user$project$FcTypes$FcArrowId(ar.id)),
+									model.selectedElementId) ? _elm_lang$core$Native_Utils.update(
+									ar,
+									{title: _p24}) : ar;
+							},
+							model.fcArrows)
 					});
 				return A2(
 					_elm_lang$core$Platform_Cmd_ops['!'],
@@ -13177,14 +13166,43 @@ var _user$project$Main$update = F2(
 									[]));
 					}
 				}
-			default:
+			case 'CreateNewShape':
 				return A2(
 					_elm_lang$core$Platform_Cmd_ops['!'],
 					model,
 					_elm_lang$core$Native_List.fromArray(
 						[]));
+			default:
+				var x = A3(
+					_elm_lang$core$Task$perform,
+					function (a) {
+						return _user$project$FcTypes$HttpFailure(
+							_elm_lang$core$Basics$toString(a));
+					},
+					function (a) {
+						return _user$project$FcTypes$HttpFailure(
+							_elm_lang$core$Basics$toString(a));
+					},
+					_user$project$FcDatabase$saveElements(model));
+				return A2(
+					_elm_lang$core$Platform_Cmd_ops['!'],
+					model,
+					_elm_lang$core$Native_List.fromArray(
+						[x]));
 		}
 	});
+var _user$project$Main$unloadRequested = _elm_lang$core$Native_Platform.incomingPort('unloadRequested', _elm_lang$core$Json_Decode$int);
+var _user$project$Main$subscriptions = function (model) {
+	return _elm_lang$core$Platform_Sub$batch(
+		_elm_lang$core$Native_List.fromArray(
+			[
+				_user$project$Main$scrollPositionTold(_user$project$FcTypes$ScrollPositionTold),
+				_user$project$Main$unloadRequested(_user$project$FcTypes$SaveElements),
+				_elm_lang$mouse$Mouse$moves(_user$project$FcTypes$MouseMove),
+				_elm_lang$mouse$Mouse$ups(_user$project$FcTypes$MouseUp),
+				_elm_lang$mouse$Mouse$downs(_user$project$FcTypes$MouseDown)
+			]));
+};
 var _user$project$Main$main = {
 	main: _elm_lang$html$Html_App$program(
 		{init: _user$project$Main$init, view: _user$project$FcGraphics$view, update: _user$project$Main$update, subscriptions: _user$project$Main$subscriptions})
